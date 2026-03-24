@@ -11,24 +11,23 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --cream:    #F4EFE6;
+  --cream:    #F3EEE5;
   --paper:    #FDFAF4;
   --ink:      #111111;
   --ink2:     #3D3830;
   --rule:     #C4BAA8;
   --muted:    #9A9080;
-  --accent:   #7A1F1F;   /* curve + cursor color */
+  --accent:   #8B2020;
   --green:    #1A6638;
-  --gold:     #7A6000;
-  --uiBg:     #EBE5D8;
-  --uiBorder: #CCC3B4;
-  --cursor:   rgba(122,31,31,0.55);
+  --amber:    #9B6800;
+  --uiBg:     #EAE4D7;
+  --uiBorder: #CCC3B2;
 }
 
 html, body {
   height: 100%;
-  /* allow scroll on small screens, hide on large */
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
@@ -39,7 +38,6 @@ body {
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
-  padding: 0;
 }
 
 /* ── HEADER ── */
@@ -50,38 +48,76 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: 11px 20px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
-.logo { font-size: 1.2rem; font-weight: 700; letter-spacing: .02em; }
-.logo em { font-style: italic; font-weight: 400; color: var(--accent); }
-.hdr-right {
-  display: flex; align-items: center; gap: 12px;
+.logo {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  user-select: none;
 }
-.ctrl { display: flex; align-items: center; gap: 6px; }
-.clbl { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.logo em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--accent);
+}
+.hdr-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ctrl {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.clbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .52rem;
+  color: var(--muted);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
 select {
-  font-family: 'Libre Baskerville', serif; font-size: .78rem;
-  background: var(--paper); border: 1px solid var(--uiBorder);
-  color: var(--ink); padding: 5px 7px; border-radius: 2px; cursor: pointer;
+  font-family: 'Libre Baskerville', serif;
+  font-size: .78rem;
+  background: var(--paper);
+  border: 1px solid var(--uiBorder);
+  color: var(--ink);
+  padding: 4px 6px;
+  border-radius: 2px;
+  cursor: pointer;
 }
-input[type=range] { width: 62px; accent-color: var(--accent); cursor: pointer; }
-.num { font-family: 'IBM Plex Mono', monospace; font-size: .7rem; color: var(--ink2); min-width: 22px; }
+input[type=range] {
+  width: 58px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .68rem;
+  color: var(--ink2);
+  min-width: 22px;
+}
 
-/* ── MAIN AREA ── */
+/* ── MAIN ── */
 .main {
-  flex: 1;
   width: 100%;
-  max-width: 640px;
+  max-width: 620px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 16px 16px;
-  gap: 14px;
+  padding: 16px 14px 24px;
+  gap: 12px;
+  flex: 1;
 }
 
-/* ── EXERCISE SELECTOR ── */
-.ex-row {
+/* ── DRILL CHIPS ── */
+.drill-row {
   width: 100%;
   display: flex;
   gap: 6px;
@@ -89,11 +125,19 @@ input[type=range] { width: 62px; accent-color: var(--accent); cursor: pointer; }
   justify-content: center;
 }
 .chip {
-  font-family: 'IBM Plex Mono', monospace; font-size: .58rem; letter-spacing: .02em;
-  padding: 4px 12px; border-radius: 20px;
-  border: 1px solid var(--uiBorder); background: var(--paper); color: var(--muted);
-  cursor: pointer; transition: all .12s;
-  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .56rem;
+  letter-spacing: .02em;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--uiBorder);
+  background: var(--paper);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .12s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
 }
 .chip:hover { border-color: var(--ink2); color: var(--ink); }
 .chip.sel   { background: var(--ink); color: var(--paper); border-color: var(--ink); }
@@ -104,122 +148,218 @@ input[type=range] { width: 62px; accent-color: var(--accent); cursor: pointer; }
   background: var(--paper);
   border: 1px solid var(--uiBorder);
   border-radius: 3px;
-  padding: 16px 12px 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,.07);
+  padding: 18px 14px 14px;
+  box-shadow: 0 2px 16px rgba(0,0,0,.06);
   flex-shrink: 0;
+  position: relative;
 }
-#mainCanvas { display: block; width: 100%; }
+#mainCanvas {
+  display: block;
+  width: 100%;
+}
 
-/* ── STATUS LINE ── */
-.status-row {
+/* ── PITCH READOUT ── */
+.pitch-row {
   width: 100%;
   display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 4px;
+  min-height: 32px;
+}
+.pr-note {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 36px;
+  transition: color .08s;
+  line-height: 1;
+}
+.pr-note.on    { color: var(--green); }
+.pr-note.amber { color: var(--amber); }
+.pr-note.off   { color: var(--accent); }
+
+.pr-cents {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .75rem;
+  color: var(--muted);
+  min-width: 44px;
+  text-align: center;
+}
+.pr-hz {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .62rem;
+  color: var(--rule);
+  text-align: right;
+  min-width: 64px;
+}
+
+/* ── STATUS ── */
+.status-msg {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .6rem;
+  color: var(--muted);
+  letter-spacing: .04em;
+  text-align: center;
+  min-height: 16px;
+}
+
+/* ── BUTTONS ── */
+.btn-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
-.beats { display: flex; gap: 6px; }
-.bp {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--rule);
-  transition: background .04s, transform .04s;
-}
-.bp.on { background: var(--ink); transform: scale(1.5); }
-.bp.b1.on { background: var(--accent); transform: scale(1.7); }
-.smsg {
-  font-family: 'IBM Plex Mono', monospace; font-size: .6rem;
-  color: var(--muted); flex: 1;
-}
-.nread { display: flex; align-items: baseline; gap: 7px; }
-.nrn {
-  font-size: 1.3rem; font-weight: 700; min-width: 30px;
-  text-align: right; transition: color .08s; color: var(--ink);
-}
-.nrn.on   { color: var(--green); }
-.nrn.near { color: var(--accent); }
-.nrc { font-family: 'IBM Plex Mono', monospace; font-size: .6rem; color: var(--muted); min-width: 38px; }
-.nrh { font-family: 'IBM Plex Mono', monospace; font-size: .56rem; color: var(--rule); }
 
-/* ── PASS PIPS ── */
-.pass-row {
+.btn-main {
   width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.plbl { font-family: 'IBM Plex Mono', monospace; font-size: .55rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.ppips { display: flex; gap: 5px; }
-.ppip { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--rule); transition: all .25s; }
-.ppip.done   { background: var(--green); border-color: var(--green); }
-.ppip.active { border-color: var(--ink); box-shadow: 0 0 0 2px rgba(17,17,17,.1); }
-
-/* ── ACTION BUTTON ── */
-.action-wrap {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  padding-top: 4px;
-}
-.btn-action {
   font-family: 'Libre Baskerville', serif;
-  font-size: 1rem; font-weight: 700;
-  padding: 14px 0;
-  width: 180px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 16px 0;
   border-radius: 3px;
   border: none;
   cursor: pointer;
-  transition: background .12s, transform .08s;
+  transition: background .12s, transform .07s, opacity .12s;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   user-select: none;
 }
-.btn-action:active { transform: scale(.97); }
-.btn-start { background: var(--ink); color: var(--paper); }
-.btn-start:hover { background: var(--ink2); }
-.btn-start:disabled { opacity: .3; cursor: default; pointer-events: none; }
-.btn-stop  { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
-.btn-stop:hover { background: var(--accent); color: var(--paper); }
-.btn-stop:disabled { opacity: .3; cursor: default; pointer-events: none; }
+.btn-main:active { transform: scale(.98); }
+.btn-main.start {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn-main.start:hover { background: var(--ink2); }
+.btn-main.start:disabled { opacity: .25; cursor: default; pointer-events: none; }
+
+.btn-row {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+}
+.btn-half {
+  flex: 1;
+  font-family: 'Libre Baskerville', serif;
+  font-size: .9rem;
+  font-weight: 700;
+  padding: 14px 0;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background .12s, color .12s, transform .07s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+.btn-half:active { transform: scale(.97); }
+.btn-retry {
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+}
+.btn-retry:hover { background: var(--ink2); }
+.btn-new {
+  background: transparent;
+  color: var(--ink2);
+  border: 1.5px solid var(--uiBorder);
+  font-weight: 400;
+  font-style: italic;
+}
+.btn-new:hover { border-color: var(--ink2); color: var(--ink); }
+
+.btn-stop {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .62rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 8px 0;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.btn-stop:hover { color: var(--accent); }
+
+.hidden { display: none !important; }
 
 /* ── OVERLAY ── */
 .ov {
   position: fixed; inset: 0; z-index: 99;
-  background: rgba(244,239,230,.96); backdrop-filter: blur(10px);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 18px; padding: 40px; text-align: center;
+  background: rgba(243,238,229,.96);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 40px;
+  text-align: center;
 }
 .ov.gone { display: none; }
 .ov-title { font-size: 2.2rem; font-weight: 700; }
 .ov-title em { font-style: italic; font-weight: 400; color: var(--accent); }
-.ov-body { font-size: .95rem; color: var(--muted); line-height: 1.8; max-width: 320px; }
+.ov-body {
+  font-size: .92rem;
+  color: var(--muted);
+  line-height: 1.85;
+  max-width: 300px;
+}
 .ov-steps {
-  font-family: 'IBM Plex Mono', monospace; font-size: .64rem; color: var(--ink2);
-  line-height: 2.2; text-align: left;
-  background: var(--uiBg); padding: 14px 20px; border-radius: 2px; border: 1px solid var(--uiBorder);
-  max-width: 320px; width: 100%;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .62rem;
+  color: var(--ink2);
+  line-height: 2.2;
+  text-align: left;
+  background: var(--uiBg);
+  padding: 14px 20px;
+  border-radius: 2px;
+  border: 1px solid var(--uiBorder);
+  max-width: 300px;
+  width: 100%;
 }
 .ov-btn {
-  font-family: 'Libre Baskerville', serif; font-size: .92rem; font-weight: 700;
-  padding: 13px 34px; border-radius: 2px; border: none;
-  background: var(--ink); color: var(--paper); cursor: pointer;
-  min-width: 200px; touch-action: manipulation;
+  font-family: 'Libre Baskerville', serif;
+  font-size: .92rem;
+  font-weight: 700;
+  padding: 14px 0;
+  border-radius: 3px;
+  border: none;
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+  width: 100%;
+  max-width: 300px;
+  touch-action: manipulation;
   transition: background .12s;
 }
 .ov-btn:hover { background: var(--ink2); }
-.ov-err { font-family: 'IBM Plex Mono', monospace; font-size: .63rem; color: var(--accent); display: none; max-width: 300px; }
+.ov-err {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .62rem;
+  color: var(--accent);
+  display: none;
+  max-width: 300px;
+}
 </style>
 </head>
 <body>
 
 <div class="ov" id="ov">
   <div class="ov-title">Sight<em>Sing</em></div>
-  <div class="ov-body">Short sight-singing drills with real-time pitch feedback.</div>
+  <div class="ov-body">Sight-singing drills with real-time pitch feedback.</div>
   <div class="ov-steps">
-    1 · Allow microphone access below<br>
-    2 · Pick a drill &amp; key above the staff<br>
-    3 · Press <strong>Start</strong> — chord plays, then sing<br>
-    4 · Watch the red line track your voice<br>
-    5 · Land the line on each note
+    1 · Allow microphone access<br>
+    2 · Pick a drill and key<br>
+    3 · Press Start — listen to the chord<br>
+    4 · Sing when the metronome enters beat 1<br>
+    5 · Watch the red line — land on each note
   </div>
   <button class="ov-btn" id="grantBtn">Allow microphone</button>
   <div class="ov-err" id="ovErr"></div>
@@ -227,12 +367,7 @@ input[type=range] { width: 62px; accent-color: var(--accent); cursor: pointer; }
 
 <div class="hdr">
   <span class="logo">Sight<em>Sing</em></span>
-  <div class="hdr-right">
-    <div class="ctrl">
-      <span class="clbl">BPM</span>
-      <input type="range" id="bpmR" min="40" max="120" value="72">
-      <span class="num" id="bpmV">72</span>
-    </div>
+  <div class="hdr-controls">
     <div class="ctrl">
       <span class="clbl">Key</span>
       <select id="keyS">
@@ -245,42 +380,41 @@ input[type=range] { width: 62px; accent-color: var(--accent); cursor: pointer; }
       </select>
     </div>
     <div class="ctrl">
-      <span class="clbl">Passes</span>
-      <select id="passS">
-        <option value="3">3×</option>
-        <option value="4" selected>4×</option>
-        <option value="5">5×</option>
-      </select>
+      <span class="clbl">♩=</span>
+      <input type="range" id="bpmR" min="40" max="120" value="72">
+      <span class="num" id="bpmV">72</span>
     </div>
   </div>
 </div>
 
 <div class="main">
 
-  <div class="ex-row" id="exRow"></div>
+  <div class="drill-row" id="drillRow"></div>
 
   <div class="staff-card">
-    <canvas id="mainCanvas" height="220"></canvas>
+    <canvas id="mainCanvas" height="230"></canvas>
   </div>
 
-  <div class="status-row">
-    <div class="beats" id="bts"></div>
-    <span class="smsg" id="smsg">Allow mic, then Start</span>
-    <div class="nread">
-      <span class="nrn" id="nrn">—</span>
-      <span class="nrc" id="nrc">±0¢</span>
-      <span class="nrh" id="nrh">—</span>
+  <div class="pitch-row">
+    <span class="pr-note" id="prNote">—</span>
+    <span class="pr-cents" id="prCents"></span>
+    <span class="pr-hz" id="prHz"></span>
+  </div>
+
+  <div class="status-msg" id="statusMsg">Press Start to begin</div>
+
+  <div class="btn-area">
+    <!-- READY state -->
+    <button class="btn-main start" id="btnStart">Start</button>
+
+    <!-- SINGING state (escape only) -->
+    <button class="btn-stop hidden" id="btnStop">■ stop</button>
+
+    <!-- REVIEW state -->
+    <div class="btn-row hidden" id="reviewBtns">
+      <button class="btn-half btn-retry" id="btnRetry">Try Again</button>
+      <button class="btn-half btn-new"   id="btnNew">New Drill</button>
     </div>
-  </div>
-
-  <div class="pass-row">
-    <span class="plbl">Pass</span>
-    <div class="ppips" id="ppips"></div>
-  </div>
-
-  <div class="action-wrap">
-    <button class="btn-action btn-start" id="startBtn">Start</button>
-    <button class="btn-action btn-stop"  id="stopBtn" disabled>Stop</button>
   </div>
 
 </div>
@@ -289,7 +423,7 @@ input[type=range] { width: 62px; accent-color: var(--accent); cursor: pointer; }
 'use strict';
 
 // ── VexFlow ───────────────────────────────────────────────────────────────────
-const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, StaveConnector } = Vex.Flow;
+const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
 
 // ── THEORY ────────────────────────────────────────────────────────────────────
 const NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
@@ -315,109 +449,281 @@ function midiToVFKey(midi) {
   return `${n[mpc(midi)]}${a[mpc(midi)]}/${moct(midi)}`;
 }
 
-// ── EXERCISES — 4 notes each (one 4/4 measure) ────────────────────────────────
-// Each exercise is relative to the key root
-const EXERS = [
-  { id:'steps_up',   name:'Steps ↑',    offsets:[0,2,4,5]   },  // C D E F
-  { id:'steps_down', name:'Steps ↓',    offsets:[12,11,9,7] },  // C' B A G (high to low)
-  { id:'triad_up',   name:'Triad ↑',    offsets:[0,4,7,12]  },  // C E G C'
-  { id:'triad_down', name:'Triad ↓',    offsets:[12,7,4,0]  },  // C' G E C
-  { id:'leap_up',    name:'Leap ↑',     offsets:[0,7,5,12]  },  // C G F C'
-  { id:'leap_down',  name:'Leap ↓',     offsets:[12,5,7,0]  },  // C' F G C
-  { id:'thirds',     name:'Thirds',     offsets:[0,4,2,5]   },  // C E D F
-  { id:'arch',       name:'Arch',       offsets:[0,4,7,4]   },  // C E G E
+// Drills — 4 quarter notes, one 4/4 measure
+const DRILLS = [
+  { name:'Steps ↑',   off:[0,2,4,5]    },
+  { name:'Steps ↓',   off:[12,11,9,7]  },
+  { name:'Triad ↑',   off:[0,4,7,12]   },
+  { name:'Triad ↓',   off:[12,7,4,0]   },
+  { name:'Arch',      off:[0,4,7,4]    },
+  { name:'Thirds',    off:[0,4,2,5]    },
+  { name:'Leap ↑',    off:[0,7,9,12]   },
+  { name:'Leap ↓',    off:[12,5,3,0]   },
 ];
 
-let curExIdx = 0;
+let curDrill = 0;
 let curKey   = 'C';
+let bpm      = 72;
+let beatSec  = 60 / 72;
 
-function getPhrase(exIdx, key) {
-  const root = KEY_ROOT[key];
-  return EXERS[exIdx].offsets.map(o => root + o);
+function getPhrase() {
+  const root = KEY_ROOT[curKey];
+  return DRILLS[curDrill].off.map(o => root + o);
 }
 
-// ── APP STATE ─────────────────────────────────────────────────────────────────
-let actx = null, analyser = null;
-let running = false, inIntro = true;
-let bpm = 72, totalPass = 4;
-let phrase = [];
+// ── STATE MACHINE ─────────────────────────────────────────────────────────────
+// States: READY | INTRO | SING | REVIEW
+let STATE = 'READY';
 
-// Staff geometry (logical px, extracted from VexFlow after each render)
-let geo = null;
-/*
-  geo.sp          — staff space (px between lines)
-  geo.refY        — Y of bottom staff line (E4)
-  geo.topLineY    — Y of top staff line
-  geo.noteXs[]    — X centre of each phrase note
-  geo.m1right     — right edge of measure 1 (intro)
-  geo.m2right     — right edge of measure 2 (phrase)
-  geo.introChordX — X centre of intro chord
-  geo.introRootX  — X centre of intro root note
-*/
+function setState(s) {
+  STATE = s;
+  const btnStart   = document.getElementById('btnStart');
+  const btnStop    = document.getElementById('btnStop');
+  const reviewBtns = document.getElementById('reviewBtns');
 
-// Bitmap cache (rebuilt by ResizeObserver)
-let noteBitmap  = null;
-let buildPending = false;
+  btnStart.classList.toggle('hidden',   s !== 'READY');
+  btnStop.classList.toggle('hidden',    s !== 'SING');
+  reviewBtns.classList.toggle('hidden', s !== 'REVIEW');
 
-// Scheduler (Chris Wilson lookahead)
-const LOOKAHEAD = 0.12, SCHED_MS = 25;
-let schedTimer = null, nextBeatAudio = 0, schedBeatIdx = 0;
-const INTRO_BEATS = 4;  // 2 for chord (half-note), 2 for root (half-note)
-let pass = 0;
+  const msgs = {
+    READY:  'Press Start to begin',
+    INTRO:  'Listen — find your pitch',
+    SING:   'Sing',
+    REVIEW: 'Review your pitch — Try Again or New Drill',
+  };
+  setStatus(msgs[s] || '');
 
-// Beat queue (drained by RAF)
-let vBeatQueue = [];
-let curPhraseIdx = -1;
-let beatAudioTimes = [];  // beatAudioTimes[i] = actx.currentTime when phrase beat i started
+  if (s !== 'SING') clearPitchDisplay();
+}
 
-// Pitch ring buffer [{t, midi}]
-const PBUF_SIZE = 300;
-let pitchBuf  = [];
-let allCurves = [];  // per-pass snapshots
+// ── AUDIO ─────────────────────────────────────────────────────────────────────
+let actx     = null;
+let analyser = null;
 
-// Pitch EMA
-let emaMidi = null, consecValid = 0;
-let onPitch = false;
+// Metronome click — 4/4 accent on beat 1
+function click(t, beat) {
+  const accent = (beat % 4 === 0);
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.connect(g); g.connect(actx.destination);
+  o.frequency.value = accent ? 1100 : 680;
+  const vol = accent ? 0.20 : 0.07;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.055);
+  o.start(t); o.stop(t + 0.065);
+}
 
-// RAF
-let rafId = null;
+// Piano-like tone (additive harmonics, attack + decay)
+function pianoTone(hz, t, dur, vol) {
+  [1, 2, 3, 4, 6].forEach((h, i) => {
+    const hv = [1, .38, .16, .07, .03][i];
+    const o  = actx.createOscillator();
+    const g  = actx.createGain();
+    o.connect(g); g.connect(actx.destination);
+    o.type = 'sine';
+    o.frequency.value = hz * h;
+    const v = vol * hv;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(v, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(v * 0.28, t + 0.35);
+    g.gain.exponentialRampToValueAtTime(v * 0.10, t + dur * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001,   t + dur);
+    o.start(t); o.stop(t + dur + 0.04);
+  });
+}
 
-// YIN
+// ── SCHEDULER ─────────────────────────────────────────────────────────────────
+const LOOKAHEAD = 0.12;
+const SCHED_MS  = 25;
+let schedTimer    = null;
+let nextBeatAudio = 0;
+let schedBeatIdx  = 0;
+
+// Total beats: 4 intro + 4 phrase = 8
+// beatAudioTimes[i] = actx time when phrase beat i fires
+let beatAudioTimes = [];
+let vBeatQueue     = [];  // {t, kind:'intro'|'phrase', pi?}
+
+function startScheduler() {
+  schedBeatIdx   = 0;
+  beatAudioTimes = [];
+  vBeatQueue     = [];
+  nextBeatAudio  = actx.currentTime + 0.15;
+  schedTimer = setInterval(schedTick, SCHED_MS);
+  schedTick();
+}
+
+function stopScheduler() {
+  if (schedTimer) { clearInterval(schedTimer); schedTimer = null; }
+}
+
+function schedTick() {
+  if (!actx) return;
+  const total = 8; // 4 intro + 4 phrase
+  while (nextBeatAudio < actx.currentTime + LOOKAHEAD) {
+    scheduleBeat(schedBeatIdx, nextBeatAudio);
+    nextBeatAudio += beatSec;
+    schedBeatIdx++;
+    if (schedBeatIdx >= total) {
+      stopScheduler();
+      // End of phrase — transition to REVIEW after last beat duration
+      const endDelay = (nextBeatAudio - actx.currentTime) * 1000;
+      setTimeout(enterReview, endDelay);
+      return;
+    }
+  }
+}
+
+function scheduleBeat(idx, t) {
+  click(t, idx); // 4/4 click on every beat, accent on 0 and 4
+
+  if (idx < 4) {
+    // Intro: half-note chord (beats 0-1), half-note root (beats 2-3)
+    const halfDur = beatSec * 2;
+    if (idx === 0) {
+      const root = KEY_ROOT[curKey];
+      [root, root+4, root+7].forEach(m => pianoTone(midi2hz(m), t, halfDur, 0.15));
+    } else if (idx === 2) {
+      pianoTone(midi2hz(KEY_ROOT[curKey]), t, halfDur, 0.20);
+    }
+    vBeatQueue.push({ t, kind: 'intro', beat: idx });
+  } else {
+    const pi = idx - 4;
+    beatAudioTimes[pi] = t;
+    vBeatQueue.push({ t, kind: 'phrase', pi });
+  }
+}
+
+// ── PITCH DETECTION & FILTERING ───────────────────────────────────────────────
 const timeBuf = new Float32Array(4096);
 const yinBuf  = new Float32Array(512);
 
-// ── SINGLE CANVAS ─────────────────────────────────────────────────────────────
-const canvas = document.getElementById('mainCanvas');
-const ctx2d  = canvas.getContext('2d');
+function yinDetect(buf, sr) {
+  const N = 1024, H = 512;
+  // RMS gate
+  let rms = 0;
+  for (let i = 0; i < N; i++) rms += buf[i] * buf[i];
+  if (Math.sqrt(rms / N) < 0.016) return null;
 
-const resizeObs = new ResizeObserver(() => {
-  if (buildPending) return;
-  buildPending = true;
-  requestAnimationFrame(doRebuild);
-});
+  // Difference function
+  for (let t = 0; t < H; t++) {
+    let s = 0;
+    for (let i = 0; i < H; i++) { const d = buf[i] - buf[i+t]; s += d*d; }
+    yinBuf[t] = s;
+  }
+  // Cumulative mean normalised
+  yinBuf[0] = 1; let run = 0;
+  for (let t = 1; t < H; t++) { run += yinBuf[t]; yinBuf[t] = yinBuf[t]*t/run; }
 
-function doRebuild() {
-  buildPending = false;
-  rebuildNotation();
+  // Find first dip below threshold
+  const THR = 0.09; let t = 2;
+  for (; t < H; t++) {
+    if (yinBuf[t] < THR) {
+      while (t+1 < H && yinBuf[t+1] < yinBuf[t]) t++;
+      break;
+    }
+  }
+  if (t >= H || yinBuf[t] >= THR) return null;
+
+  // Parabolic interpolation
+  const x0 = t > 0 ? t-1 : t, x2 = t+1 < H ? t+1 : t;
+  let best;
+  if (x0 === t)      best = yinBuf[t] <= yinBuf[x2] ? t : x2;
+  else if (x2 === t) best = yinBuf[t] <= yinBuf[x0] ? t : x0;
+  else { const a=yinBuf[x0],b=yinBuf[t],c=yinBuf[x2]; best=t+(c-a)/(2*(2*b-c-a)); }
+
+  const hz = sr / best;
+  return (hz > 70 && hz < 1100) ? hz : null;
 }
 
-// ── REBUILD NOTATION ──────────────────────────────────────────────────────────
+// Pitch filter state
+let filteredMidi  = null;  // current EMA output
+let recentMidis   = [];    // last 8 valid readings for median (octave correction)
+let holdFrames    = 0;     // frames to hold last pitch during silence
+const HOLD_FRAMES = 5;     // ~83ms at 60fps before lifting pen
+const EMA_ALPHA   = 0.55;  // responsive but smooth
+
+function processPitch(hz) {
+  if (hz === null) {
+    if (holdFrames > 0) {
+      holdFrames--;
+      return filteredMidi; // hold last value briefly
+    }
+    // True silence — reset acquisition but keep filteredMidi for display fade
+    return null;
+  }
+
+  holdFrames = HOLD_FRAMES;
+  const rawMidi = hz2midi(hz);
+
+  // Octave correction
+  let corrected = rawMidi;
+  if (recentMidis.length >= 4) {
+    const sorted = [...recentMidis].sort((a,b)=>a-b);
+    const median = sorted[Math.floor(sorted.length/2)];
+    const diff   = rawMidi - median;
+    if (Math.abs(diff) > 9) {
+      // Check if it's an octave relationship
+      const octDiff = Math.round(diff / 12) * 12;
+      if (Math.abs(diff - octDiff) < 1.5) {
+        corrected = rawMidi - octDiff; // snap to correct octave
+      } else {
+        // Spike — discard, return held value
+        return filteredMidi;
+      }
+    }
+  }
+
+  // Update recent buffer
+  recentMidis.push(corrected);
+  if (recentMidis.length > 8) recentMidis.shift();
+
+  // EMA — responsive (α=0.55)
+  filteredMidi = filteredMidi === null
+    ? corrected
+    : EMA_ALPHA * corrected + (1 - EMA_ALPHA) * filteredMidi;
+
+  return filteredMidi;
+}
+
+function resetPitchFilter() {
+  filteredMidi = null;
+  recentMidis  = [];
+  holdFrames   = 0;
+}
+
+// ── CANVAS & GEOMETRY ─────────────────────────────────────────────────────────
+const canvas = document.getElementById('mainCanvas');
+const ctx2d  = canvas.getContext('2d');
+let geo      = null;
+let noteBmp  = null;
+
+// Pitch ring buffer [{t, midi}]
+const PBUF = 350;
+let pitchBuf = [];
+
+// ResizeObserver — rebuilds on any layout/zoom change
+let buildPending = false;
+const resizeObs  = new ResizeObserver(() => {
+  if (buildPending) return;
+  buildPending = true;
+  requestAnimationFrame(() => { buildPending = false; rebuildNotation(); });
+});
+
 function rebuildNotation() {
-  // Logical size
-  const W = canvas.parentElement.clientWidth - 24; // card padding 12px each side
-  const H = 220;
+  const W   = canvas.parentElement.clientWidth - 28;
+  const H   = 230;
   const dpr = window.devicePixelRatio || 1;
 
-  canvas.width       = Math.round(W * dpr);
-  canvas.height      = Math.round(H * dpr);
+  canvas.width        = Math.round(W * dpr);
+  canvas.height       = Math.round(H * dpr);
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
 
-  // Render VexFlow into a temporary DOM canvas at LOGICAL size
-  const tmp = document.createElement('canvas');
-  tmp.width  = W;
-  tmp.height = H;
-
+  // Render VexFlow into a temporary logical-size canvas
+  const tmp    = document.createElement('canvas');
+  tmp.width    = W;
+  tmp.height   = H;
   const renderer = new Renderer(tmp, Renderer.Backends.CANVAS);
   renderer.resize(W, H);
   const vf = renderer.getContext();
@@ -428,16 +734,15 @@ function rebuildNotation() {
   vf.fillRect(0, 0, W, H);
   vf.restore();
 
-  const staveY  = 46;
-  const margin  = 12;
-
-  // Measure widths: 50/50 split
+  const staveY = 50;
+  const margin = 10;
   const totalW = W - margin * 2;
-  const m1W    = Math.round(totalW * 0.38);  // intro (wider for clef/keysig)
+  // Intro measure gets 42%, phrase measure gets 58%
+  const m1W    = Math.round(totalW * 0.42);
   const m2W    = totalW - m1W;
   const m2X    = margin + m1W;
 
-  // ── Measure 1: intro chord + root ──
+  // ── Measure 1: intro ──
   const stave1 = new Stave(margin, staveY, m1W);
   stave1.addClef('treble')
         .addKeySignature(VF_KEY[curKey])
@@ -445,86 +750,82 @@ function rebuildNotation() {
   stave1.setContext(vf).draw();
 
   const root  = KEY_ROOT[curKey];
-  const third = root + 4;
-  const fifth  = root + 7;
-
-  const chordNote = new StaveNote({
-    keys: [midiToVFKey(root), midiToVFKey(third), midiToVFKey(fifth)],
+  const chord = new StaveNote({
+    keys: [midiToVFKey(root), midiToVFKey(root+4), midiToVFKey(root+7)],
     duration: 'h', auto_stem: true,
   });
-  [root, third, fifth].forEach((m, i) => {
-    const a = needsAcc(m, curKey);
-    if (a) chordNote.addModifier(new Accidental(a), i);
+  [root, root+4, root+7].forEach((m, i) => {
+    const a = needsAcc(m, curKey); if (a) chord.addModifier(new Accidental(a), i);
   });
 
-  const rootNote = new StaveNote({
-    keys: [midiToVFKey(root)],
-    duration: 'h', auto_stem: true,
-  });
-  const a0 = needsAcc(root, curKey);
-  if (a0) rootNote.addModifier(new Accidental(a0), 0);
+  const rootNote = new StaveNote({ keys:[midiToVFKey(root)], duration:'h', auto_stem:true });
+  const a0 = needsAcc(root, curKey); if (a0) rootNote.addModifier(new Accidental(a0), 0);
 
   const v1 = new Voice({ num_beats:4, beat_value:4 }).setMode(Voice.Mode.SOFT);
-  v1.addTickables([chordNote, rootNote]);
-  new Formatter().joinVoices([v1]).format([v1], m1W - 68);
+  v1.addTickables([chord, rootNote]);
+  new Formatter().joinVoices([v1]).format([v1], m1W - 72);
   v1.draw(vf, stave1);
 
-  // ── Measure 2: phrase (4 quarter notes = 4/4) ──
+  // ── Measure 2: phrase ──
   const stave2 = new Stave(m2X, staveY, m2W - margin);
   stave2.setContext(vf).draw();
 
+  const phrase     = getPhrase();
   const staveNotes = phrase.map(midi => {
     const sn = new StaveNote({ keys:[midiToVFKey(midi)], duration:'q', auto_stem:true });
-    const a  = needsAcc(midi, curKey);
-    if (a) sn.addModifier(new Accidental(a), 0);
+    const a  = needsAcc(midi, curKey); if (a) sn.addModifier(new Accidental(a), 0);
     return sn;
   });
 
   const v2 = new Voice({ num_beats:4, beat_value:4 }).setMode(Voice.Mode.SOFT);
   v2.addTickables(staveNotes);
-  new Formatter().joinVoices([v2]).format([v2], m2W - margin - 16);
+  new Formatter().joinVoices([v2]).format([v2], m2W - margin - 12);
   v2.draw(vf, stave2);
 
-  // ── Extract geometry — all in LOGICAL pixels ──
-  const topLineY = stave2.getYForLine(0);
-  const botLineY = stave2.getYForLine(4);   // E4 = midi 64
-  const sp       = (botLineY - topLineY) / 4;
+  // Bar line between measures
+  const tl = stave2.getYForLine(0);
+  const bl = stave2.getYForLine(4);
+  vf.save();
+  vf.beginPath();
+  vf.setStrokeStyle('#111');
+  vf.setLineWidth(1.5);
+  vf.moveTo(m2X, tl); vf.lineTo(m2X, bl);
+  vf.stroke();
+  vf.restore();
+
+  // ── Extract geometry (logical pixels) ──
+  const topY = stave2.getYForLine(0);
+  const botY = stave2.getYForLine(4); // E4 = midi 64
+  const sp   = (botY - topY) / 4;
 
   const noteXs = staveNotes.map(sn => {
     const bb = sn.getBoundingBox();
     return bb ? bb.getX() + bb.getW() / 2 : 0;
   });
 
-  const cBB = chordNote.getBoundingBox();
-  const rBB = rootNote.getBoundingBox();
-
   geo = {
     sp,
-    refY:        botLineY,
-    topLineY,
+    refY:     botY,
+    topY,
     noteXs,
-    introChordX: cBB ? cBB.getX() + cBB.getW()/2 : margin + m1W*0.3,
-    introRootX:  rBB ? rBB.getX() + rBB.getW()/2 : margin + m1W*0.7,
-    m1right:     margin + m1W,
-    m2right:     m2X + m2W - margin,
+    m2left:   m2X,
+    m2right:  m2X + m2W - margin,
+    phrase,   // midi values — kept here for midiToY reference
   };
 
-  // Cache the notation as ImageBitmap
-  createImageBitmap(tmp).then(bmp => {
-    noteBitmap = bmp;
-    drawFrame();
-  });
+  // Cache bitmap
+  createImageBitmap(tmp).then(bmp => { noteBmp = bmp; drawFrame(); });
 }
 
-// ── MIDI → CANVAS Y ───────────────────────────────────────────────────────────
-// E4 = midi 64 = geo.refY (bottom staff line)
+// ── COORDINATE MAPPING ────────────────────────────────────────────────────────
+// E4 = midi 64 → geo.refY
 // 1 semitone = geo.sp * 7/12
 function midiToY(mf) {
   if (!geo) return 0;
   return geo.refY - (mf - 64) * geo.sp * (7 / 12);
 }
 
-// ── PITCH TIME → CANVAS X ─────────────────────────────────────────────────────
+// Map pitch sample audio time → canvas X
 function pitchTimeToX(t) {
   if (!geo || !beatAudioTimes.length) return null;
   const N = beatAudioTimes.length;
@@ -537,28 +838,19 @@ function pitchTimeToX(t) {
       return x0 + (x1 - x0) * ((t - t0) / (t1 - t0));
     }
   }
-  // Clamp after last beat
-  if (t >= beatAudioTimes[N-1]) {
-    const t0  = beatAudioTimes[N-1];
-    const t1  = t0 + beatSec;
-    const x0  = geo.noteXs[N-1];
-    const x1  = geo.m2right;
-    return x0 + (x1 - x0) * Math.min(1, (t - t0) / (t1 - t0));
+  // After last beat
+  if (beatAudioTimes.length > 0 && t >= beatAudioTimes[N-1]) {
+    const t0 = beatAudioTimes[N-1];
+    const t1 = t0 + beatSec;
+    const x0 = geo.noteXs[N-1];
+    return x0 + (geo.m2right - x0) * Math.min(1, (t - t0) / (t1 - t0));
   }
   return null;
 }
 
-// Current playhead X
-let beatSec = 60 / 72;
-
-function playheadX() {
-  if (!actx || !geo || inIntro) return null;
-  return pitchTimeToX(actx.currentTime);
-}
-
-// ── DRAW ──────────────────────────────────────────────────────────────────────
+// ── DRAWING ───────────────────────────────────────────────────────────────────
 function drawFrame() {
-  if (!noteBitmap) return;
+  if (!noteBmp) return;
   const dpr = window.devicePixelRatio || 1;
   const W   = canvas.width  / dpr;
   const H   = canvas.height / dpr;
@@ -567,73 +859,42 @@ function drawFrame() {
   ctx2d.scale(dpr, dpr);
   ctx2d.clearRect(0, 0, W, H);
 
-  // 1. Notation bitmap (logical size → fills canvas)
-  ctx2d.drawImage(noteBitmap, 0, 0, W, H);
+  // 1. Notation
+  ctx2d.drawImage(noteBmp, 0, 0, W, H);
 
-  if (geo) {
-    // 2. Ghost curves from previous passes
-    allCurves.forEach((curve, pi) => {
-      const age = pass - pi;
-      if (age <= 0 || age > totalPass) return;
-      const alpha = Math.max(0.03, 0.14 - age * 0.03);
-      drawCurve(curve, alpha, 1.1);
-    });
-
-    // 3. Live pitch curve
-    if (pitchBuf.length > 1) {
-      drawCurve(pitchBuf, 0.88, 2.0);
-      // Leading dot
-      const last = pitchBuf[pitchBuf.length - 1];
-      const lx   = pitchTimeToX(last.t);
-      const ly   = midiToY(last.midi);
-      if (lx !== null) {
-        ctx2d.save();
-        ctx2d.fillStyle   = '#7A1F1F';
-        ctx2d.shadowColor = '#7A1F1F';
-        ctx2d.shadowBlur  = 6;
-        ctx2d.beginPath(); ctx2d.arc(lx, ly, 2.8, 0, Math.PI*2); ctx2d.fill();
-        ctx2d.restore();
-      }
+  // 2. Pitch curve (clipped to phrase measure x bounds)
+  if (geo && pitchBuf.length > 1) {
+    ctx2d.save();
+    // Clip to phrase measure area only
+    ctx2d.beginPath();
+    ctx2d.rect(geo.m2left, 0, geo.m2right - geo.m2left, H);
+    ctx2d.clip();
+    drawCurve(pitchBuf, 0.88, 2.0);
+    // Leading dot
+    const last = pitchBuf[pitchBuf.length - 1];
+    const lx   = pitchTimeToX(last.t);
+    const ly   = midiToY(last.midi);
+    if (lx !== null) {
+      ctx2d.fillStyle   = '#8B2020';
+      ctx2d.shadowColor = '#8B2020';
+      ctx2d.shadowBlur  = 7;
+      ctx2d.beginPath(); ctx2d.arc(lx, ly, 2.8, 0, Math.PI*2); ctx2d.fill();
     }
-
-    // 4. Vertical cursor line
-    const px = playheadX();
-    if (px !== null) {
-      ctx2d.save();
-      // Subtle glow behind cursor
-      const grad = ctx2d.createLinearGradient(px-8, 0, px+8, 0);
-      grad.addColorStop(0,   'rgba(122,31,31,0)');
-      grad.addColorStop(0.5, 'rgba(122,31,31,0.08)');
-      grad.addColorStop(1,   'rgba(122,31,31,0)');
-      ctx2d.fillStyle = grad;
-      ctx2d.fillRect(px - 8, geo.topLineY - 16, 16, (geo.refY - geo.topLineY) + 32);
-
-      // The cursor line itself
-      ctx2d.strokeStyle = 'rgba(122,31,31,0.60)';
-      ctx2d.lineWidth   = 1.5;
-      ctx2d.beginPath();
-      ctx2d.moveTo(px, geo.topLineY - 16);
-      ctx2d.lineTo(px, geo.refY     + 16);
-      ctx2d.stroke();
-      ctx2d.restore();
-    }
+    ctx2d.restore();
   }
 
   ctx2d.restore();
 }
 
-// Catmull-Rom spline through pitch buffer points
+// Catmull-Rom spline — pen lifts on null/silence gaps
 function drawCurve(pts, alpha, lw) {
-  if (pts.length < 2) return;
-
   const proj = pts.map(p => {
     const x = pitchTimeToX(p.t);
     if (x === null) return null;
     return { x, y: midiToY(p.midi) };
   });
 
-  ctx2d.save();
-  ctx2d.strokeStyle = `rgba(122,31,31,${alpha})`;
+  ctx2d.strokeStyle = `rgba(139,32,32,${alpha})`;
   ctx2d.lineWidth   = lw;
   ctx2d.lineJoin    = 'round';
   ctx2d.lineCap     = 'round';
@@ -643,138 +904,46 @@ function drawCurve(pts, alpha, lw) {
 
   for (let i = 0; i < proj.length; i++) {
     const p = proj[i];
+
     if (!p) {
       if (started) { ctx2d.stroke(); ctx2d.beginPath(); started = false; }
       continue;
     }
 
-    // Break on big spatial gap (silence or breath)
+    // Lift pen on large spatial gap (held silence that snuck through)
     if (started && i > 0) {
       const prev = proj[i-1];
-      if (prev && (Math.abs(p.x - prev.x) > 55 || Math.abs(p.y - prev.y) > 80)) {
+      if (prev && Math.abs(p.y - prev.y) > 90) {
         ctx2d.stroke(); ctx2d.beginPath(); started = false;
       }
     }
 
     if (!started) { ctx2d.moveTo(p.x, p.y); started = true; continue; }
 
-    const p0 = proj[Math.max(0, i-1)] || p;
+    const p0 = proj[Math.max(0, i-1)]             || p;
     const p1 = p;
     const p2 = proj[Math.min(proj.length-1, i+1)] || p;
     const p3 = proj[Math.min(proj.length-1, i+2)] || p2;
-    if (!p0 || !p2) { ctx2d.lineTo(p1.x, p1.y); continue; }
+
+    if (!p0 || !p2) { ctx2d.lineTo(p.x, p.y); continue; }
 
     ctx2d.bezierCurveTo(
-      p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6,
-      p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6,
+      p1.x + (p2.x - p0.x) / 6,
+      p1.y + (p2.y - p0.y) / 6,
+      p2.x - (p3.x - p1.x) / 6,
+      p2.y - (p3.y - p1.y) / 6,
       p2.x, p2.y
     );
   }
   if (started) ctx2d.stroke();
-  ctx2d.restore();
-}
-
-// ── AUDIO: PIANO + METRONOME ──────────────────────────────────────────────────
-function pianoNote(hz, t, dur, gain) {
-  if (!actx) return;
-  [1, 2, 3, 4].forEach((h, i) => {
-    const hg = [1, .40, .18, .07][i];
-    const o  = actx.createOscillator();
-    const g  = actx.createGain();
-    o.connect(g); g.connect(actx.destination);
-    o.type = 'sine'; o.frequency.value = hz * h;
-    const v = gain * hg;
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(v, t + 0.012);
-    g.gain.exponentialRampToValueAtTime(v * 0.3,  t + 0.4);
-    g.gain.exponentialRampToValueAtTime(v * 0.1,  t + dur * 0.6);
-    g.gain.exponentialRampToValueAtTime(0.0001,   t + dur);
-    o.start(t); o.stop(t + dur + 0.05);
-  });
-}
-
-// 4/4 metronome click — beat 1 is accented
-function click(t, beat) {
-  if (!actx) return;
-  const accent = (beat % 4 === 0);
-  const o = actx.createOscillator();
-  const g = actx.createGain();
-  o.connect(g); g.connect(actx.destination);
-  o.frequency.value = accent ? 1100 : 700;
-  const vol = accent ? 0.18 : 0.07;
-  g.gain.setValueAtTime(vol, t);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.055);
-  o.start(t); o.stop(t + 0.06);
-}
-
-// ── SCHEDULER ─────────────────────────────────────────────────────────────────
-function startPass() {
-  schedBeatIdx   = 0;
-  beatAudioTimes = [];
-  vBeatQueue     = [];
-  inIntro        = true;
-  curPhraseIdx   = -1;
-  nextBeatAudio  = actx.currentTime + 0.1;
-
-  schedTimer = setInterval(schedTick, SCHED_MS);
-  schedTick();
-}
-
-function schedTick() {
-  if (!running || !actx) return;
-  const total = INTRO_BEATS + phrase.length;  // 4 + 4 = 8 beats per pass
-  while (nextBeatAudio < actx.currentTime + LOOKAHEAD) {
-    fireScheduledBeat(schedBeatIdx, nextBeatAudio);
-    nextBeatAudio += beatSec;
-    schedBeatIdx++;
-    if (schedBeatIdx >= total) {
-      clearInterval(schedTimer); schedTimer = null;
-      const delay = Math.max(0, (nextBeatAudio - actx.currentTime) * 1000);
-      setTimeout(endPass, delay);
-      return;
-    }
-  }
-}
-
-function fireScheduledBeat(idx, t) {
-  // Always click on every beat, 4/4 accent pattern
-  click(t, idx);
-
-  if (idx < INTRO_BEATS) {
-    const halfDur = beatSec * 2;
-    if (idx === 0) {
-      const root = KEY_ROOT[curKey];
-      [root, root+4, root+7].forEach(m => pianoNote(midi2hz(m), t, halfDur, 0.16));
-    } else if (idx === 2) {
-      pianoNote(midi2hz(KEY_ROOT[curKey]), t, halfDur, 0.20);
-    }
-    vBeatQueue.push({ t, kind:'intro', beatInIntro: idx });
-  } else {
-    const pi = idx - INTRO_BEATS;
-    beatAudioTimes[pi] = t;
-    vBeatQueue.push({ t, kind:'phrase', pi });
-  }
-}
-
-function endPass() {
-  if (!running) return;
-  allCurves[pass] = pitchBuf.map(p => ({...p}));
-  pitchBuf = [];
-  pass++;
-  renderPassPips();
-
-  if (pass >= totalPass) {
-    stopSession();
-    setStatus('Done! Press Start to go again.');
-    return;
-  }
-  setStatus(`Pass ${pass+1} of ${totalPass}`);
-  startPass();
 }
 
 // ── RAF LOOP ──────────────────────────────────────────────────────────────────
+let rafId    = null;
+let singing  = false; // true only during SING state
+
 function rafLoop() {
-  if (!running) return;
+  if (STATE === 'READY' || STATE === 'REVIEW') return;
   rafId = requestAnimationFrame(rafLoop);
 
   const now = actx ? actx.currentTime : 0;
@@ -783,122 +952,81 @@ function rafLoop() {
   while (vBeatQueue.length && vBeatQueue[0].t <= now) {
     const b = vBeatQueue.shift();
     if (b.kind === 'intro') {
-      inIntro = true;
-      updateBeatDots(b.beatInIntro % 4);
-      setStatus(b.beatInIntro < 2 ? 'Listen — chord' : 'Listen — root note');
+      singing = false;
+      if (b.beat === 0) setStatus('Listen — tonic chord');
+      if (b.beat === 2) setStatus('Listen — root note');
     } else {
-      inIntro = false;
-      curPhraseIdx = b.pi;
-      updateBeatDots(b.pi % 4);
-      if (b.pi === 0) setStatus(`Singing — pass ${pass+1} of ${totalPass}`);
+      singing = true;
+      if (b.pi === 0) { setState('SING'); }
     }
   }
 
-  // Pitch
-  if (analyser && !inIntro && curPhraseIdx >= 0) {
+  // Pitch detection — only while singing
+  if (singing && analyser) {
     analyser.getFloatTimeDomainData(timeBuf);
     const hz = yinDetect(timeBuf, actx.sampleRate);
-    const sm = emaProcess(hz);
+    const sm = processPitch(hz);
 
     if (sm !== null) {
       const nearest = Math.round(sm);
       const cents   = (sm - nearest) * 100;
-      onPitch = Math.abs(cents) < 30;
+      const absC    = Math.abs(cents);
+      const cl      = absC < 25 ? 'on' : absC < 50 ? 'amber' : 'off';
+      const noteName = NOTE_NAMES[mpc(nearest)];
 
-      document.getElementById('nrh').textContent = hz ? hz.toFixed(1)+' Hz' : '—';
-      const nn = document.getElementById('nrn');
-      nn.textContent = NOTE_NAMES[mpc(nearest)];
-      nn.className   = 'nrn ' + (onPitch ? 'on' : 'near');
-      document.getElementById('nrc').textContent = (cents >= 0 ? '+' : '') + cents.toFixed(0) + '¢';
+      const nn = document.getElementById('prNote');
+      nn.textContent = noteName;
+      nn.className   = `pr-note ${cl}`;
+      document.getElementById('prCents').textContent = (cents >= 0 ? '+' : '') + cents.toFixed(0) + '¢';
+      document.getElementById('prHz').textContent    = hz ? hz.toFixed(1) + ' Hz' : '';
 
       pitchBuf.push({ t: now, midi: sm });
-      if (pitchBuf.length > PBUF_SIZE) pitchBuf.shift();
-    } else {
-      onPitch = false;
-      clearNoteDisplay();
+      if (pitchBuf.length > PBUF) pitchBuf.shift();
     }
-  } else {
-    onPitch = false;
-    if (inIntro) clearNoteDisplay();
+    // When hz is null, processPitch holds the last value or returns null
+    // Either way we don't add to buffer — pen lifts naturally
   }
 
   drawFrame();
 }
 
-// ── YIN ───────────────────────────────────────────────────────────────────────
-function yinDetect(buf, sr) {
-  const N = 1024, H = 512;
-  let rms = 0;
-  for (let i = 0; i < N; i++) rms += buf[i]*buf[i];
-  if (Math.sqrt(rms/N) < 0.018) return null;
-
-  for (let t = 0; t < H; t++) {
-    let s = 0;
-    for (let i = 0; i < H; i++) { const d = buf[i]-buf[i+t]; s += d*d; }
-    yinBuf[t] = s;
-  }
-  yinBuf[0] = 1; let run = 0;
-  for (let t = 1; t < H; t++) { run += yinBuf[t]; yinBuf[t] = yinBuf[t]*t/run; }
-
-  const THR = 0.10; let t = 2;
-  for (; t < H; t++) { if (yinBuf[t] < THR) { while (t+1<H && yinBuf[t+1]<yinBuf[t]) t++; break; } }
-  if (t >= H || yinBuf[t] >= THR) return null;
-
-  const x0 = t>0?t-1:t, x2 = t+1<H?t+1:t;
-  let best;
-  if (x0===t)      best = yinBuf[t]<=yinBuf[x2]?t:x2;
-  else if (x2===t) best = yinBuf[t]<=yinBuf[x0]?t:x0;
-  else { const a=yinBuf[x0],b=yinBuf[t],c=yinBuf[x2]; best=t+(c-a)/(2*(2*b-c-a)); }
-
-  const hz = sr/best;
-  return (hz>70&&hz<1100) ? hz : null;
-}
-
-function emaProcess(hz) {
-  if (hz === null) { consecValid = 0; return emaMidi; }
-  const raw = hz2midi(hz);
-  consecValid++;
-  if (consecValid < 3) return emaMidi;
-  emaMidi = (emaMidi === null) ? raw : 0.28*raw + 0.72*emaMidi;
-  return emaMidi;
-}
-
-// ── SESSION ───────────────────────────────────────────────────────────────────
-async function startSession() {
+// ── SESSION CONTROL ───────────────────────────────────────────────────────────
+function enterIntro() {
   if (!actx) return;
-  if (actx.state === 'suspended') await actx.resume();
-  running = true; pass = 0;
-  allCurves = []; pitchBuf = []; emaMidi = null; consecValid = 0;
-  beatSec = 60 / bpm;
-  document.getElementById('startBtn').disabled = true;
-  document.getElementById('stopBtn').disabled  = false;
-  buildBeatDots(); renderPassPips();
-  setStatus('Listen — chord');
-  startPass(); rafLoop();
+  pitchBuf   = [];
+  singing    = false;
+  beatSec    = 60 / bpm;
+  resetPitchFilter();
+  setState('INTRO');
+  startScheduler();
+  rafId = requestAnimationFrame(rafLoop);
 }
 
-function stopSession() {
-  running = false;
-  if (schedTimer) { clearInterval(schedTimer); schedTimer = null; }
-  if (rafId)      { cancelAnimationFrame(rafId); rafId = null; }
-  document.getElementById('startBtn').disabled = false;
-  document.getElementById('stopBtn').disabled  = true;
-  inIntro = true; curPhraseIdx = -1; onPitch = false;
-  updateBeatDots(-1);
-  clearNoteDisplay();
-  drawFrame();
+function enterReview() {
+  singing = false;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  stopScheduler();
+  setState('REVIEW');
+  drawFrame(); // freeze curve on screen
 }
 
-// ── MIC ───────────────────────────────────────────────────────────────────────
+function stopAll() {
+  singing = false;
+  stopScheduler();
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+}
+
+// ── MIC INIT ──────────────────────────────────────────────────────────────────
 async function initMic() {
   try {
-    actx = new (window.AudioContext||window.webkitAudioContext)();
+    actx = new (window.AudioContext || window.webkitAudioContext)();
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false }
+      audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false }
     });
     const src = actx.createMediaStreamSource(stream);
     analyser  = actx.createAnalyser();
-    analyser.fftSize = 4096; analyser.smoothingTimeConstant = 0;
+    analyser.fftSize = 4096;
+    analyser.smoothingTimeConstant = 0;
     src.connect(analyser);
     return true;
   } catch(e) { return false; }
@@ -906,98 +1034,93 @@ async function initMic() {
 
 // ── UI HELPERS ────────────────────────────────────────────────────────────────
 function setStatus(msg) {
-  document.getElementById('smsg').textContent = msg;
+  document.getElementById('statusMsg').textContent = msg;
 }
 
-function clearNoteDisplay() {
-  document.getElementById('nrn').textContent = '—';
-  document.getElementById('nrn').className   = 'nrn';
-  document.getElementById('nrc').textContent = '±0¢';
-  document.getElementById('nrh').textContent = '—';
+function clearPitchDisplay() {
+  document.getElementById('prNote').textContent   = '—';
+  document.getElementById('prNote').className     = 'pr-note';
+  document.getElementById('prCents').textContent  = '';
+  document.getElementById('prHz').textContent     = '';
 }
 
-function buildBeatDots() {
-  const c = document.getElementById('bts'); c.innerHTML = '';
-  for (let i = 0; i < 4; i++) {
-    const d = document.createElement('div');
-    d.className = 'bp' + (i===0?' b1':''); d.id='bp'+i; c.appendChild(d);
-  }
-}
-
-function updateBeatDots(b) {
-  for (let i = 0; i < 4; i++) {
-    const d = document.getElementById('bp'+i);
-    if (d) d.className = 'bp' + (i===0?' b1':'') + (i===b%4?' on':'');
-  }
-}
-
-function renderPassPips() {
-  const c = document.getElementById('ppips'); c.innerHTML = '';
-  for (let i = 0; i < totalPass; i++) {
-    const d = document.createElement('div');
-    d.className = 'ppip' + (i<pass?' done':i===pass?' active':'');
-    c.appendChild(d);
-  }
-}
-
-function buildExRow() {
-  const c = document.getElementById('exRow'); c.innerHTML = '';
-  EXERS.forEach((ex, i) => {
+function buildDrillRow() {
+  const c = document.getElementById('drillRow'); c.innerHTML = '';
+  DRILLS.forEach((d, i) => {
     const b = document.createElement('button');
-    b.className = 'chip' + (i===curExIdx?' sel':'');
-    b.textContent = ex.name;
-    b.onclick = () => {
-      if (running) stopSession();
-      curExIdx = i;
-      phrase   = getPhrase(i, curKey);
+    b.className   = 'chip' + (i === curDrill ? ' sel' : '');
+    b.textContent = d.name;
+    b.onclick     = () => {
+      if (STATE !== 'READY' && STATE !== 'REVIEW') { stopAll(); }
+      curDrill = i;
       document.querySelectorAll('.chip').forEach((el,j) => el.classList.toggle('sel', j===i));
+      pitchBuf = [];
       rebuildNotation();
-      setStatus('Press Start');
+      setState('READY');
     };
     c.appendChild(b);
   });
 }
 
-// ── BOOT ──────────────────────────────────────────────────────────────────────
+// ── WIRING ────────────────────────────────────────────────────────────────────
 document.getElementById('grantBtn').onclick = async () => {
   const ok = await initMic();
   if (ok) {
     document.getElementById('ov').classList.add('gone');
-    setStatus('Press Start to begin');
+    setState('READY');
   } else {
     const e = document.getElementById('ovErr');
     e.style.display = 'block';
-    e.textContent = 'Microphone access denied — check browser permissions and reload.';
+    e.textContent   = 'Microphone access denied — check browser permissions and reload.';
   }
 };
 
-document.getElementById('startBtn').onclick = startSession;
-document.getElementById('stopBtn').onclick  = () => { stopSession(); setStatus('Stopped'); };
+document.getElementById('btnStart').onclick = () => {
+  if (!actx) return;
+  if (actx.state === 'suspended') actx.resume().then(enterIntro);
+  else enterIntro();
+};
+
+document.getElementById('btnStop').onclick = () => {
+  stopAll();
+  pitchBuf = [];
+  setState('READY');
+  drawFrame();
+};
+
+document.getElementById('btnRetry').onclick = () => {
+  // Same drill — replay from intro
+  pitchBuf = [];
+  if (actx.state === 'suspended') actx.resume().then(enterIntro);
+  else enterIntro();
+};
+
+document.getElementById('btnNew').onclick = () => {
+  // Advance to next drill
+  curDrill = (curDrill + 1) % DRILLS.length;
+  document.querySelectorAll('.chip').forEach((el,j) => el.classList.toggle('sel', j===curDrill));
+  pitchBuf = [];
+  rebuildNotation();
+  setState('READY');
+};
 
 document.getElementById('bpmR').oninput = function() {
-  bpm = +this.value; beatSec = 60/bpm;
+  bpm    = +this.value;
+  beatSec = 60 / bpm;
   document.getElementById('bpmV').textContent = bpm;
 };
+
 document.getElementById('keyS').onchange = function() {
   curKey = this.value;
-  if (running) stopSession();
-  phrase = getPhrase(curExIdx, curKey);
-  rebuildNotation(); setStatus('Press Start');
-};
-document.getElementById('passS').onchange = function() {
-  totalPass = +this.value;
-  if (running) stopSession();
-  renderPassPips();
+  if (STATE !== 'READY') { stopAll(); setState('READY'); }
+  pitchBuf = [];
+  rebuildNotation();
 };
 
-// Init
-buildBeatDots();
-buildExRow();
-renderPassPips();
-phrase = getPhrase(0, curKey);
-
-resizeObs.observe(document.getElementById('staff-card') || canvas.parentElement);
-requestAnimationFrame(() => requestAnimationFrame(doRebuild));
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+buildDrillRow();
+resizeObs.observe(canvas.parentElement);
+requestAnimationFrame(() => requestAnimationFrame(() => rebuildNotation()));
 </script>
 </body>
 </html>
