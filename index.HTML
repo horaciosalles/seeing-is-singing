@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SightSing — Pitch Strategy Lab</title>
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cream:    #F3EEE5;
+  --paper:    #FDFAF4;
+  --ink:      #111111;
+  --ink2:     #3D3830;
+  --rule:     #C4BAA8;
+  --muted:    #9A9080;
+  --uiBorder: #CCC3B2;
+  --colA: #0891b2;
+  --colB: #16a34a;
+  --colC: #ea580c;
+  --colD: #7c3aed;
+  --colE: #ca8a04;
+  --colF: #be185d;
+  --colG: #0369a1;
+}
+
+html, body { height: 100%; overflow-x: hidden; }
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'Libre Baskerville', serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.hdr {
+  width: 100%;
+  background: var(--paper);
+  border-bottom: 1px solid var(--uiBorder);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  flex-shrink: 0;
+  position: sticky; top: 0; z-index: 10;
+}
+.logo { font-size: 1.1rem; font-weight: 700; }
+.logo em { font-style: italic; font-weight: 400; color: #8B2020; }
+.logo small {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .52rem; color: var(--muted);
+  letter-spacing: .06em; margin-left: 8px;
+}
+.hdr-r { display: flex; align-items: center; gap: 12px; }
+.ctrl  { display: flex; align-items: center; gap: 5px; }
+.clbl  { font-family: 'IBM Plex Mono', monospace; font-size: .52rem; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+select {
+  font-family: 'Libre Baskerville', serif; font-size: .76rem;
+  background: var(--paper); border: 1px solid var(--uiBorder);
+  color: var(--ink); padding: 4px 6px; border-radius: 2px; cursor: pointer;
+}
+input[type=range] { width: 56px; accent-color: #8B2020; cursor: pointer; }
+.num { font-family: 'IBM Plex Mono', monospace; font-size: .66rem; color: var(--ink2); min-width: 22px; }
+
+.main {
+  width: 100%; max-width: 750px;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 12px 24px; gap: 12px; flex: 1;
+}
+
+/* Legend */
+.legend {
+  width: 100%;
+  display: flex; flex-wrap: wrap; gap: 8px 16px;
+  padding: 10px 14px;
+  background: var(--paper); border: 1px solid var(--uiBorder); border-radius: 2px;
+}
+.leg-item { display: flex; align-items: center; gap: 7px; }
+.leg-swatch { width: 28px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.leg-label  { font-family: 'IBM Plex Mono', monospace; font-size: .58rem; color: var(--ink2); }
+
+/* Staff card */
+.staff-card {
+  width: 100%;
+  background: var(--paper);
+  border: 1px solid var(--uiBorder);
+  border-radius: 3px;
+  padding: 16px 12px 12px;
+  box-shadow: 0 2px 16px rgba(0,0,0,.06);
+  flex-shrink: 0;
+}
+#mainCanvas { display: block; width: 100%; }
+
+/* Readout table */
+.readout-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 18px 1fr 56px 56px;
+  gap: 4px 10px;
+  padding: 8px 12px;
+  background: var(--paper); border: 1px solid var(--uiBorder); border-radius: 2px;
+}
+.rg-hdr {
+  font-family: 'IBM Plex Mono', monospace; font-size: .52rem;
+  color: var(--muted); letter-spacing: .05em; text-transform: uppercase;
+  padding-bottom: 2px; border-bottom: 1px solid var(--uiBorder);
+}
+.rg-dot  { width: 10px; height: 10px; border-radius: 50%; align-self: center; }
+.rg-name { font-family: 'IBM Plex Mono', monospace; font-size: .6rem; color: var(--ink2); align-self: center; }
+.rg-val  { font-family: 'IBM Plex Mono', monospace; font-size: .62rem; text-align: right; align-self: center; }
+
+/* Buttons */
+.btn-row { width: 100%; display: flex; gap: 10px; }
+.btn {
+  flex: 1;
+  font-family: 'Libre Baskerville', serif; font-size: .92rem; font-weight: 700;
+  padding: 14px 0; border-radius: 3px; border: none;
+  cursor: pointer; transition: background .12s, transform .07s;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.btn:active { transform: scale(.97); }
+.btn-start { background: var(--ink); color: var(--paper); }
+.btn-start:hover { background: var(--ink2); }
+.btn-start:disabled { opacity: .3; cursor: default; pointer-events: none; }
+.btn-stop  { background: transparent; color: #8B2020; border: 1.5px solid #8B2020; font-weight: 400; font-style: italic; flex: 0 0 auto; padding: 14px 24px; }
+.btn-stop:hover { background: #8B2020; color: var(--paper); }
+.btn-stop:disabled { opacity: .3; cursor: default; pointer-events: none; }
+
+.status { font-family: 'IBM Plex Mono', monospace; font-size: .6rem; color: var(--muted); text-align: center; min-height: 14px; }
+
+/* Overlay */
+.ov {
+  position: fixed; inset: 0; z-index: 99;
+  background: rgba(243,238,229,.96); backdrop-filter: blur(10px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 36px; text-align: center;
+}
+.ov.gone { display: none; }
+.ov-title { font-size: 1.9rem; font-weight: 700; }
+.ov-title em { font-style: italic; font-weight: 400; color: #8B2020; }
+.ov-body  { font-size: .88rem; color: var(--muted); line-height: 1.75; max-width: 320px; }
+.ov-btn {
+  font-family: 'Libre Baskerville', serif; font-size: .9rem; font-weight: 700;
+  padding: 13px 0; border-radius: 3px; border: none;
+  background: var(--ink); color: var(--paper); cursor: pointer;
+  width: 100%; max-width: 300px; touch-action: manipulation;
+}
+.ov-btn:hover { background: var(--ink2); }
+.ov-err { font-family: 'IBM Plex Mono', monospace; font-size: .6rem; color: #8B2020; display: none; max-width: 300px; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="ov" id="ov">
+  <div class="ov-title">Sight<em>Sing</em> <span style="font-size:1rem;font-weight:400;color:var(--muted)">Pitch Lab</span></div>
+  <div class="ov-body">Seven pitch-tracking strategies rendered simultaneously. Sing a phrase and compare the curves. Choose your favourite.</div>
+  <button class="ov-btn" id="grantBtn">Allow microphone</button>
+  <div class="ov-err" id="ovErr"></div>
+</div>
+
+<div class="hdr">
+  <span class="logo">Sight<em>Sing</em> <small>pitch lab</small></span>
+  <div class="hdr-r">
+    <div class="ctrl">
+      <span class="clbl">Key</span>
+      <select id="keyS">
+        <option value="C">C</option><option value="G">G</option>
+        <option value="F">F</option><option value="D">D</option>
+        <option value="Bb">B♭</option><option value="A">A</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <span class="clbl">♩=</span>
+      <input type="range" id="bpmR" min="40" max="120" value="72">
+      <span class="num" id="bpmV">72</span>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="legend">
+    <div class="leg-item"><div class="leg-swatch" style="background:var(--colA)"></div><span class="leg-label">A — YIN+OctCorr+EMA 0.55+Catmull</span></div>
+    <div class="leg-item"><div class="leg-swatch" style="background:var(--colB)"></div><span class="leg-label">B — Fast buf(512)+EMA 0.55</span></div>
+    <div class="leg-item"><div class="leg-swatch" style="background:var(--colC)"></div><span class="leg-label">C — Median-9 window (no EMA)</span></div>
+    <div class="leg-item"><div class="leg-swatch" style="background:var(--colD)"></div><span class="leg-label">D — Double EMA (0.75 → 0.85)</span></div>
+    <div class="leg-item"><div class="leg-swatch" style="background:var(--colE)"></div><span class="leg-label">E — AI: EMA 0.2 + Bézier midpoint</span></div>
+    <div class="leg-item"><div class="leg-swatch" style="background:var(--colF)"></div><span class="leg-label">F — Schmitt Trigger (Anti-Flicker)</span></div>
+    <div class="leg-item"><div class="leg-swatch" style="background:var(--colG)"></div><span class="leg-label">G — Golden Ratio (Ultra Smooth)</span></div>
+  </div>
+
+  <div class="staff-card">
+    <canvas id="mainCanvas" height="260"></canvas>
+  </div>
+
+  <div class="readout-grid" id="readoutGrid">
+    <div class="rg-hdr" style="grid-column:1/2"></div>
+    <div class="rg-hdr" style="grid-column:2/3">Strategy</div>
+    <div class="rg-hdr" style="grid-column:3/4">Note</div>
+    <div class="rg-hdr" style="grid-column:4/5">Cents</div>
+  </div>
+
+  <div class="status" id="statusMsg">Press Start to begin</div>
+
+  <div class="btn-row">
+    <button class="btn btn-start" id="btnStart">Start (12 Beats)</button>
+    <button class="btn btn-stop hidden" id="btnStop">Stop</button>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ── VexFlow ───────────────────────────────────────────────────────────────────
+const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
+
+// ── THEORY ────────────────────────────────────────────────────────────────────
+const NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const hz2midi   = hz => 69 + 12 * Math.log2(hz / 440);
+const midi2hz   = m  => 440 * Math.pow(2, (m - 69) / 12);
+const mpc       = m  => ((m % 12) + 12) % 12;
+const moct      = m  => Math.floor(m / 12) - 1;
+
+const KEY_ROOT = { C:60, G:67, D:62, A:69, F:65, Bb:70 };
+const VF_KEY   = { C:'C', G:'G', D:'D', A:'A', F:'F', Bb:'Bb' };
+const KEY_PCS  = { C:[], G:[6], D:[6,1], A:[6,1,8], F:[10], Bb:[10,3] };
+
+function needsAcc(midi, key) {
+  const p = mpc(midi);
+  if (![1,3,6,8,10].includes(p)) return null;
+  if (KEY_PCS[key].includes(p))  return null;
+  return [1,3,8].includes(p) ? '#' : 'b';
+}
+function midiToVFKey(midi) {
+  const n = ['c','c','d','d','e','f','f','g','g','a','a','b'];
+  const a = ['','#','','#','','','#','','#','','#',''];
+  return `${n[mpc(midi)]}${a[mpc(midi)]}/${moct(midi)}`;
+}
+
+// Extended drill: 8-note scale phrase
+let curKey = 'C';
+let bpm    = 72;
+let beatSec = 60 / 72;
+
+function getPhrase() {
+  const r = KEY_ROOT[curKey];
+  return [r, r+2, r+4, r+5, r+7, r+5, r+4, r+2];
+}
+
+// ── AUDIO ─────────────────────────────────────────────────────────────────────
+let actx     = null;
+let analyser1024 = null;
+let analyser512  = null;
+
+// ── YIN CORE ──────────────────────────────────────────────────────────────────
+// Sensitivity improved (0.016 -> 0.005) & Range expanded (50Hz - 1400Hz)
+function yinCore(buf, sr, N, yinBuf) {
+  const H = N >> 1;
+  let rms = 0;
+  for (let i = 0; i < N; i++) rms += buf[i]*buf[i];
+  if (Math.sqrt(rms/N) < 0.005) return null;
+
+  for (let t = 0; t < H; t++) {
+    let s = 0;
+    for (let i = 0; i < H; i++) { const d=buf[i]-buf[i+t]; s+=d*d; }
+    yinBuf[t] = s;
+  }
+  yinBuf[0] = 1; let run = 0;
+  for (let t=1;t<H;t++) { run+=yinBuf[t]; yinBuf[t]=yinBuf[t]*t/run; }
+
+  const THR=0.09; let t=2;
+  for (;t<H;t++) { if(yinBuf[t]<THR){while(t+1<H&&yinBuf[t+1]<yinBuf[t])t++;break;} }
+  if (t>=H||yinBuf[t]>=THR) return null;
+
+  const x0=t>0?t-1:t, x2=t+1<H?t+1:t;
+  let best;
+  if(x0===t)      best=yinBuf[t]<=yinBuf[x2]?t:x2;
+  else if(x2===t) best=yinBuf[t]<=yinBuf[x0]?t:x0;
+  else { const a=yinBuf[x0],b=yinBuf[t],c=yinBuf[x2]; best=t+(c-a)/(2*(2*b-c-a)); }
+
+  const hz=sr/best;
+  return (hz>50&&hz<1400)?hz:null;
+}
+
+const buf1024 = new Float32Array(4096);
+const buf512  = new Float32Array(4096);
+const yin1024 = new Float32Array(512);
+const yin512  = new Float32Array(256);
+
+// ── STRATEGY STATE ────────────────────────────────────────────────────────────
+function octaveCorrect(rawMidi, recentArr) {
+  if (recentArr.length < 4) return rawMidi;
+  const sorted = [...recentArr].sort((a,b)=>a-b);
+  const med    = sorted[Math.floor(sorted.length/2)];
+  const diff   = rawMidi - med;
+  if (Math.abs(diff) > 9) {
+    const octD = Math.round(diff/12)*12;
+    if (Math.abs(diff-octD) < 1.5) return rawMidi - octD;
+    return null;
+  }
+  return rawMidi;
+}
+
+const SA = {
+  name: 'A: OctCorr+EMA0.55', color: '#0891b2',
+  ema: null, recent: [], hold: 0, buf: [],
+  reset() { this.ema=null; this.recent=[]; this.hold=0; this.buf=[]; },
+  process(hz, t) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
+    this.hold=5; const raw = hz2midi(hz); const cor = octaveCorrect(raw, this.recent);
+    if (cor===null) return this.ema;
+    this.recent.push(cor); if(this.recent.length>8) this.recent.shift();
+    this.ema = this.ema===null ? cor : 0.55*cor + 0.45*this.ema; return this.ema;
+  },
+  draw(ctx, alpha, lw) { drawCatmullRom(ctx, this.buf, this.color, alpha, lw); }
+};
+
+const SB = {
+  name: 'B: Fast512+EMA0.55', color: '#16a34a',
+  ema: null, recent: [], hold: 0, buf: [],
+  reset() { this.ema=null; this.recent=[]; this.hold=0; this.buf=[]; },
+  process(hz, t) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
+    this.hold=5; const raw = hz2midi(hz); const cor = octaveCorrect(raw, this.recent);
+    if (cor===null) return this.ema;
+    this.recent.push(cor); if(this.recent.length>8) this.recent.shift();
+    this.ema = this.ema===null ? cor : 0.55*cor + 0.45*this.ema; return this.ema;
+  },
+  draw(ctx, alpha, lw) { drawCatmullRom(ctx, this.buf, this.color, alpha, lw); }
+};
+
+const SC = {
+  name: 'C: Median-9', color: '#ea580c',
+  window: [], hold: 0, last: null, buf: [],
+  reset() { this.window=[]; this.hold=0; this.last=null; this.buf=[]; },
+  process(hz, t) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.last;} return null; }
+    this.hold=5; const raw = hz2midi(hz);
+    if (this.last!==null && Math.abs(raw-this.last)>9) {
+      const octD=Math.round((raw-this.last)/12)*12;
+      if (Math.abs((raw-this.last)-octD)<1.5) this.window.push(raw-octD);
+    } else this.window.push(raw);
+    if(this.window.length>9) this.window.shift();
+    const sorted=[...this.window].sort((a,b)=>a-b);
+    this.last = sorted[Math.floor(sorted.length/2)]; return this.last;
+  },
+  draw(ctx, alpha, lw) { drawCatmullRom(ctx, this.buf, this.color, alpha, lw); }
+};
+
+const SD = {
+  name: 'D: DoubleEMA', color: '#7c3aed',
+  ema1: null, ema2: null, recent: [], hold: 0, buf: [],
+  reset() { this.ema1=null; this.ema2=null; this.recent=[]; this.hold=0; this.buf=[]; },
+  process(hz, t) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema2;} return null; }
+    this.hold=5; const raw = hz2midi(hz); const cor = octaveCorrect(raw, this.recent);
+    if (cor===null) return this.ema2;
+    this.recent.push(cor); if(this.recent.length>8) this.recent.shift();
+    this.ema1 = this.ema1===null ? cor : 0.75*cor + 0.25*this.ema1;
+    this.ema2 = this.ema2===null ? this.ema1 : 0.85*this.ema1 + 0.15*this.ema2; return this.ema2;
+  },
+  draw(ctx, alpha, lw) { drawCatmullRom(ctx, this.buf, this.color, alpha, lw); }
+};
+
+const SE = {
+  name: 'E: AI EMA0.2+Bézier', color: '#ca8a04',
+  ema: null, hold: 0, buf: [],
+  reset() { this.ema=null; this.hold=0; this.buf=[]; },
+  process(hz, t) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
+    this.hold=5; const raw = hz2midi(hz);
+    this.ema = this.ema===null ? raw : 0.2*raw + 0.8*this.ema; return this.ema;
+  },
+  draw(ctx, alpha, lw) { drawBezierMidpoint(ctx, this.buf, this.color, alpha, lw); }
+};
+
+const SF = {
+  name: 'F: Schmitt Trigger', color: '#be185d',
+  ema: null, hold: 0, buf: [],
+  reset() { this.ema=null; this.hold=0; this.buf=[]; },
+  process(hz, t) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
+    this.hold=5; const raw = hz2midi(hz);
+    if (this.ema === null) this.ema = raw;
+    else {
+      const diff = raw - this.ema;
+      if (Math.abs(diff) > 0.4) this.ema += diff * 0.2; 
+    }
+    return this.ema;
+  },
+  draw(ctx, alpha, lw) { drawCatmullRom(ctx, this.buf, this.color, alpha, lw); }
+};
+
+const SG = {
+  name: 'G: Golden Smooth', color: '#0369a1',
+  ema: null, hold: 0, buf: [],
+  reset() { this.ema=null; this.hold=0; this.buf=[]; },
+  process(hz, t) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
+    this.hold=5; const raw = hz2midi(hz);
+    this.ema = this.ema === null ? raw : 0.08 * raw + 0.92 * this.ema; return this.ema;
+  },
+  draw(ctx, alpha, lw) { drawCatmullRom(ctx, this.buf, this.color, alpha, lw); }
+};
+
+const STRATEGIES = [SA, SB, SC, SD, SE, SF, SG];
+const PBUF_SIZE  = 800; // Expanded to handle longer phrase
+
+// ── SCHEDULING & TIMING ───────────────────────────────────────────────────────
+const LOOKAHEAD = 0.12, SCHED_MS = 25;
+let schedTimer=null, nextBeat=0, schedIdx=0;
+let beatAudioTimes=[], vBeatQueue=[];
+let running=false, singing=false;
+
+function metroClick(t, beat) {
+  const acc = beat%4===0;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.connect(g); g.connect(actx.destination);
+  o.frequency.value=acc?1100:680;
+  g.gain.setValueAtTime(acc?0.18:0.065,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+0.055);
+  o.start(t); o.stop(t+0.065);
+}
+function pianoTone(hz,t,dur,vol) {
+  [1,2,3,4].forEach((h,i)=>{
+    const hv=[1,.36,.14,.06][i];
+    const o=actx.createOscillator(),g=actx.createGain();
+    o.connect(g); g.connect(actx.destination);
+    o.type='sine'; o.frequency.value=hz*h;
+    const v=vol*hv;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(v,t+0.012);
+    g.gain.exponentialRampToValueAtTime(v*0.28,t+0.35);
+    g.gain.exponentialRampToValueAtTime(v*0.09,t+dur*0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t); o.stop(t+dur+0.04);
+  });
+}
+
+function startScheduler() {
+  schedIdx=0; beatAudioTimes=[]; vBeatQueue=[];
+  nextBeat=actx.currentTime+0.15;
+  schedTimer=setInterval(schedTick,SCHED_MS);
+  schedTick();
+}
+function stopScheduler() { if(schedTimer){clearInterval(schedTimer);schedTimer=null;} }
+
+function schedTick() {
+  if(!actx) return;
+  while(nextBeat < actx.currentTime+LOOKAHEAD) {
+    fireBeat(schedIdx, nextBeat);
+    nextBeat+=beatSec;
+    schedIdx++;
+    if(schedIdx>=12) { // 4 intro beats + 8 singing beats
+      stopScheduler();
+      const delay=Math.max(0,(nextBeat-actx.currentTime)*1000);
+      setTimeout(enterReview,delay);
+      return;
+    }
+  }
+}
+function fireBeat(idx,t) {
+  metroClick(t,idx);
+  if(idx<4) {
+    const halfDur=beatSec*2;
+    if(idx===0){const r=KEY_ROOT[curKey];[r,r+4,r+7].forEach(m=>pianoTone(midi2hz(m),t,halfDur,0.14));}
+    if(idx===2) pianoTone(midi2hz(KEY_ROOT[curKey]),t,halfDur,0.19);
+    vBeatQueue.push({t,kind:'intro',beat:idx});
+  } else {
+    const pi=idx-4;
+    beatAudioTimes[pi]=t;
+    vBeatQueue.push({t,kind:'phrase',pi});
+  }
+}
+
+// ── CANVAS ────────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('mainCanvas');
+const ctx2d  = canvas.getContext('2d');
+let geo=null, noteBmp=null;
+let buildPending=false;
+
+const resizeObs = new ResizeObserver(()=>{
+  if(buildPending) return; buildPending=true;
+  requestAnimationFrame(()=>{buildPending=false; rebuildNotation();});
+});
+
+function rebuildNotation() {
+  const W=canvas.parentElement.clientWidth-24, H=260;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr);
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+
+  const tmp=document.createElement('canvas');
+  tmp.width=W; tmp.height=H;
+  const ren=new Renderer(tmp,Renderer.Backends.CANVAS);
+  ren.resize(W,H);
+  const vf=ren.getContext();
+  vf.save(); vf.setFillStyle('#FDFAF4'); vf.fillRect(0,0,W,H); vf.restore();
+
+  const sy=54, mg=10;
+  const tw=W-mg*2;
+  const m1W=Math.round(tw*0.25), m2W=tw-m1W, m2X=mg+m1W; // Re-adjusted ratio for 8 notes
+
+  const st1=new Stave(mg,sy,m1W);
+  st1.addClef('treble').addKeySignature(VF_KEY[curKey]).addTimeSignature('4/4');
+  st1.setContext(vf).draw();
+
+  const root=KEY_ROOT[curKey];
+  const chordNote=new StaveNote({keys:[midiToVFKey(root),midiToVFKey(root+4),midiToVFKey(root+7)],duration:'h',auto_stem:true});
+  [root,root+4,root+7].forEach((m,i)=>{const a=needsAcc(m,curKey);if(a)chordNote.addModifier(new Accidental(a),i);});
+  const rootNote=new StaveNote({keys:[midiToVFKey(root)],duration:'h',auto_stem:true});
+  const a0=needsAcc(root,curKey); if(a0) rootNote.addModifier(new Accidental(a0),0);
+  const v1=new Voice({num_beats:4,beat_value:4}).setMode(Voice.Mode.SOFT);
+  v1.addTickables([chordNote,rootNote]);
+  new Formatter().joinVoices([v1]).format([v1],m1W-70);
+  v1.draw(vf,st1);
+
+  const st2=new Stave(m2X,sy,m2W-mg);
+  st2.setContext(vf).draw();
+  const phrase=getPhrase(); // 8 notes
+  const sNotes=phrase.map(midi=>{
+    const sn=new StaveNote({keys:[midiToVFKey(midi)],duration:'q',auto_stem:true});
+    const a=needsAcc(midi,curKey); if(a) sn.addModifier(new Accidental(a),0);
+    return sn;
+  });
+  const v2=new Voice({num_beats:8,beat_value:4}).setMode(Voice.Mode.SOFT);
+  v2.addTickables(sNotes);
+  new Formatter().joinVoices([v2]).format([v2],m2W-mg-10);
+  v2.draw(vf,st2);
+
+  // Bar line
+  const tl=st2.getYForLine(0), bl=st2.getYForLine(4);
+  vf.save();
+  vf.beginPath(); vf.setStrokeStyle('#111'); vf.setLineWidth(1.5);
+  vf.moveTo(m2X,tl); vf.lineTo(m2X,bl); vf.stroke();
+  vf.restore();
+
+  const sp=(bl-tl)/4;
+  geo={
+    sp, refY:bl, topY:tl,
+    noteXs: sNotes.map(sn=>{const bb=sn.getBoundingBox();return bb?bb.getX()+bb.getW()/2:0;}),
+    m2left:m2X, m2right:m2X+m2W-mg,
+    phrase,
+  };
+
+  createImageBitmap(tmp).then(bmp=>{noteBmp=bmp; drawFrame();});
+}
+
+function midiToY(mf) { if(!geo) return 0; return geo.refY - (mf-64)*geo.sp*(7/12); }
+
+function pitchTimeToX(t) {
+  if(!geo||!beatAudioTimes.length) return null;
+  const N=beatAudioTimes.length;
+  for(let i=0;i<N;i++){
+    const t0=beatAudioTimes[i], t1=i+1<N?beatAudioTimes[i+1]:t0+beatSec;
+    if(t>=t0&&t<t1){
+      const x0=geo.noteXs[i], x1=geo.noteXs[i+1]!==undefined?geo.noteXs[i+1]:geo.m2right;
+      return x0+(x1-x0)*((t-t0)/(t1-t0));
+    }
+  }
+  if(t>=beatAudioTimes[N-1]){
+    const t0=beatAudioTimes[N-1],t1=t0+beatSec;
+    return geo.noteXs[N-1]+(geo.m2right-geo.noteXs[N-1])*Math.min(1,(t-t0)/(t1-t0));
+  }
+  return null;
+}
+
+// ── DRAW METHODS ──────────────────────────────────────────────────────────────
+function drawCatmullRom(ctx, pts, color, alpha, lw) {
+  if(pts.length<2) return;
+  const proj=pts.map(p=>{ const x=pitchTimeToX(p.t); if(x===null) return null; return {x,y:midiToY(p.midi)}; });
+  ctx.strokeStyle=hexAlpha(color,alpha);
+  ctx.lineWidth=lw; ctx.lineJoin='round'; ctx.lineCap='round';
+  let started=false; ctx.beginPath();
+  for(let i=0;i<proj.length;i++){
+    const p=proj[i];
+    if(!p){if(started){ctx.stroke();ctx.beginPath();started=false;} continue;}
+    if(started&&i>0){
+      const prev=proj[i-1];
+      if(prev&&Math.abs(p.y-prev.y)>85){ctx.stroke();ctx.beginPath();started=false;}
+    }
+    if(!started){ctx.moveTo(p.x,p.y);started=true;continue;}
+    const p0=proj[Math.max(0,i-1)]||p; const p1=p;
+    const p2=proj[Math.min(proj.length-1,i+1)]||p; const p3=proj[Math.min(proj.length-1,i+2)]||p2;
+    if(!p0||!p2){ctx.lineTo(p.x,p.y);continue;}
+    ctx.bezierCurveTo( p1.x+(p2.x-p0.x)/6, p1.y+(p2.y-p0.y)/6, p2.x-(p3.x-p1.x)/6, p2.y-(p3.y-p1.y)/6, p2.x,p2.y );
+  }
+  if(started) ctx.stroke();
+}
+
+function drawBezierMidpoint(ctx, pts, color, alpha, lw) {
+  if(pts.length<2) return;
+  const proj=pts.map(p=>{ const x=pitchTimeToX(p.t); if(x===null) return null; return {x,y:midiToY(p.midi)}; }).filter(Boolean);
+  if(proj.length<2) return;
+  ctx.strokeStyle=hexAlpha(color,alpha); ctx.lineWidth=lw; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(proj[0].x, proj[0].y);
+  for(let i=1;i<proj.length-1;i++){
+    const mx=(proj[i].x+proj[i+1].x)/2; const my=(proj[i].y+proj[i+1].y)/2;
+    ctx.quadraticCurveTo(proj[i].x, proj[i].y, mx, my);
+  }
+  ctx.lineTo(proj[proj.length-1].x,proj[proj.length-1].y); ctx.stroke();
+}
+
+function hexAlpha(hex, a) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function drawFrame() {
+  if(!noteBmp) return;
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.width/dpr, H=canvas.height/dpr;
+  ctx2d.save(); ctx2d.scale(dpr,dpr); ctx2d.clearRect(0,0,W,H); ctx2d.drawImage(noteBmp,0,0,W,H);
+  if(geo) {
+    ctx2d.save(); ctx2d.beginPath(); ctx2d.rect(geo.m2left, 0, geo.m2right-geo.m2left, H); ctx2d.clip();
+    STRATEGIES.forEach(s => s.draw(ctx2d, 0.82, 2.0));
+    STRATEGIES.forEach(s=>{
+      if(s.buf.length<1) return; const last=s.buf[s.buf.length-1];
+      const lx=pitchTimeToX(last.t), ly=midiToY(last.midi);
+      if(lx===null) return;
+      ctx2d.fillStyle=hexAlpha(s.color,0.9);
+      ctx2d.beginPath(); ctx2d.arc(lx,ly,3,0,Math.PI*2); ctx2d.fill();
+    });
+    ctx2d.restore();
+  }
+  ctx2d.restore();
+}
+
+// ── RAF LOOP ──────────────────────────────────────────────────────────────────
+let rafId=null;
+
+function rafLoop() {
+  if(!running) return;
+  rafId=requestAnimationFrame(rafLoop);
+  const now=actx?actx.currentTime:0;
+
+  while(vBeatQueue.length&&vBeatQueue[0].t<=now){
+    const b=vBeatQueue.shift();
+    if(b.kind==='intro'){
+      singing=false;
+      if(b.beat===0) setStatus('Listen — tonic chord');
+      if(b.beat===2) setStatus('Listen — root note');
+    } else {
+      singing=true;
+      if(b.pi===0) setStatus('Singing — watch all seven curves');
+    }
+  }
+
+  if(singing && analyser1024 && analyser512) {
+    analyser1024.getFloatTimeDomainData(buf1024);
+    analyser512.getFloatTimeDomainData(buf512);
+    const sr=actx.sampleRate;
+    const hzA=yinCore(buf1024,sr,1024,yin1024);
+    const hzB=yinCore(buf512, sr,512, yin512);
+    
+    // Process all 7 strategies
+    const smA=SA.process(hzA,now); const smB=SB.process(hzB,now);
+    const smC=SC.process(hzA,now); const smD=SD.process(hzA,now);
+    const smE=SE.process(hzA,now); const smF=SF.process(hzA,now);
+    const smG=SG.process(hzA,now);
+
+    [SA,SB,SC,SD,SE,SF,SG].forEach((s,i)=>{
+      const sm=[smA,smB,smC,smD,smE,smF,smG][i];
+      if(sm!==null){ s.buf.push({t:now,midi:sm}); if(s.buf.length>PBUF_SIZE) s.buf.shift(); }
+    });
+    updateReadout([smA,smB,smC,smD,smE,smF,smG]);
+  }
+  drawFrame();
+}
+
+// ── READOUT TABLE ─────────────────────────────────────────────────────────────
+function updateReadout(vals) {
+  STRATEGIES.forEach((s,i)=>{
+    const sm=vals[i]; const noteEl=document.getElementById(`rg-note-${i}`); const centsEl=document.getElementById(`rg-cents-${i}`);
+    if(!noteEl) return;
+    if(sm===null){noteEl.textContent='—';centsEl.textContent='';return;}
+    const nearest=Math.round(sm); const cents=(sm-nearest)*100;
+    noteEl.textContent=NOTE_NAMES[mpc(nearest)];
+    noteEl.style.color=Math.abs(cents)<25?'#1A6638':Math.abs(cents)<50?'#9B6800':'#8B2020';
+    centsEl.textContent=(cents>=0?'+':'')+cents.toFixed(0)+'¢';
+  });
+}
+
+function buildReadoutRows() {
+  const grid=document.getElementById('readoutGrid');
+  STRATEGIES.forEach((s,i)=>{
+    const dot=document.createElement('div'); dot.className='rg-dot'; dot.style.background=s.color;
+    const name=document.createElement('div'); name.className='rg-name'; name.textContent=s.name;
+    const note=document.createElement('div'); note.className='rg-val'; note.id=`rg-note-${i}`; note.textContent='—';
+    const cents=document.createElement('div'); cents.className='rg-val'; cents.id=`rg-cents-${i}`;
+    grid.appendChild(dot); grid.appendChild(name); grid.appendChild(note); grid.appendChild(cents);
+  });
+}
+
+// ── SESSION ───────────────────────────────────────────────────────────────────
+function enterIntro() {
+  STRATEGIES.forEach(s=>s.reset());
+  singing=false; running=true; beatSec=60/bpm;
+  document.getElementById('btnStart').classList.add('hidden');
+  document.getElementById('btnStop').classList.remove('hidden');
+  setStatus('Listen — tonic chord');
+  startScheduler();
+  rafId=requestAnimationFrame(rafLoop);
+}
+
+function enterReview() {
+  singing=false; running=false;
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  document.getElementById('btnStart').classList.remove('hidden');
+  document.getElementById('btnStop').classList.add('hidden');
+  setStatus('Review — all seven curves frozen. Press Start to go again.');
+  drawFrame();
+}
+
+function stopAll() {
+  running=false; singing=false; stopScheduler();
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  document.getElementById('btnStart').classList.remove('hidden');
+  document.getElementById('btnStop').classList.add('hidden');
+}
+
+// ── MIC ───────────────────────────────────────────────────────────────────────
+async function initMic() {
+  try {
+    actx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:44100,latencyHint:'interactive'});
+    const stream=await navigator.mediaDevices.getUserMedia({ audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:44100} });
+    const src=actx.createMediaStreamSource(stream);
+    analyser1024=actx.createAnalyser(); analyser1024.fftSize=4096; analyser1024.smoothingTimeConstant=0; src.connect(analyser1024);
+    analyser512=actx.createAnalyser();  analyser512.fftSize=2048;  analyser512.smoothingTimeConstant=0; src.connect(analyser512);
+    return true;
+  } catch(e){return false;}
+}
+
+// ── UI / BOOT ─────────────────────────────────────────────────────────────────
+function setStatus(msg){document.getElementById('statusMsg').textContent=msg;}
+
+document.getElementById('grantBtn').onclick=async()=>{
+  const ok=await initMic();
+  if(ok){document.getElementById('ov').classList.add('gone');setStatus('Press Start');}
+  else{const e=document.getElementById('ovErr');e.style.display='block';e.textContent='Microphone access denied — check permissions and reload.';}
+};
+document.getElementById('btnStart').onclick=()=>{
+  if(!actx) return;
+  if(actx.state==='suspended') actx.resume().then(enterIntro); else enterIntro();
+};
+document.getElementById('btnStop').onclick=()=>{stopAll();setStatus('Stopped — press Start to go again.');drawFrame();};
+document.getElementById('bpmR').oninput=function(){bpm=+this.value;beatSec=60/bpm;document.getElementById('bpmV').textContent=bpm;};
+document.getElementById('keyS').onchange=function(){curKey=this.value;STRATEGIES.forEach(s=>s.reset());rebuildNotation();};
+
+buildReadoutRows();
+resizeObs.observe(canvas.parentElement);
+requestAnimationFrame(()=>requestAnimationFrame(()=>rebuildNotation()));
+</script>
+</body>
+</html>
