@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SightSing — Pitch Lab</title>
+
+<!-- Notation library -->
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+
+<!-- Styles -->
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- ── Microphone permission overlay ── -->
+<div class="ov" id="ov">
+  <div class="ov-title">Sight<em>Sing</em> <span style="font-size:1rem;font-weight:400;color:var(--muted)">Pitch Lab</span></div>
+  <div class="ov-body">Seven strategies, continuous loop, filtered input.<br>Toggle curves with checkboxes. Pause freezes the canvas.</div>
+  <div class="ov-note">
+    Signal chain:<br>
+    mic → OS noise suppression<br>
+    → highpass 80 Hz → lowpass 1200 Hz<br>
+    → YIN pitch detection → 7 filter strategies<br><br>
+    Noise gate RMS threshold: 0.004
+  </div>
+  <button class="ov-btn" id="grantBtn">Allow microphone</button>
+  <div class="ov-err" id="ovErr"></div>
+</div>
+
+<!-- ── Header ── -->
+<div class="hdr">
+  <span class="logo">Sight<em>Sing</em> <small>pitch lab</small></span>
+  <div class="hdr-r">
+    <div class="ctrl">
+      <span class="clbl">Key</span>
+      <select id="keyS">
+        <option value="C">C</option>
+        <option value="G">G</option>
+        <option value="F">F</option>
+        <option value="D">D</option>
+        <option value="Bb">B♭</option>
+        <option value="A">A</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <span class="clbl">♩=</span>
+      <input type="range" id="bpmR" min="30" max="100" value="52">
+      <span class="num" id="bpmV">52</span>
+    </div>
+    <div class="ctrl">
+      <span class="clbl">Notes</span>
+      <select id="notesS">
+        <option value="2">2</option>
+        <option value="4" selected>4</option>
+        <option value="8">8</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main content ── -->
+<div class="main">
+
+  <!-- Strategy checkboxes + colour swatches -->
+  <div class="strategy-panel" id="strategyPanel"></div>
+
+  <!-- Staff + pitch curves (single canvas) -->
+  <div class="staff-card">
+    <div class="loop-bar-wrap">
+      <div class="loop-bar" id="loopBar"></div>
+    </div>
+    <canvas id="mainCanvas" height="280"></canvas>
+  </div>
+
+  <!-- Live note/cents readout per strategy -->
+  <div class="readout-grid" id="readoutGrid">
+    <div class="rg-hdr" style="grid-column:1/2"></div>
+    <div class="rg-hdr" style="grid-column:2/3">Strategy</div>
+    <div class="rg-hdr" style="grid-column:3/4">Note</div>
+    <div class="rg-hdr" style="grid-column:4/5">Cents</div>
+  </div>
+
+  <div class="info-row">
+    <span class="status-msg" id="statusMsg">Press Start</span>
+    <span class="loop-count" id="loopCount"></span>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-start" id="btnStart">Start</button>
+    <button class="btn btn-pause hidden" id="btnPause">Pause</button>
+    <button class="btn btn-stop  hidden" id="btnStop">Stop</button>
+  </div>
+
+</div>
+
+<!-- ── Scripts — load order matters (no bundler, no modules) ── -->
+<!--
+  Load order dependency graph:
+    theory.js   → (none)
+    audio.js    → (none)
+    yin.js      → theory.js, audio.js
+    scheduler.js → audio.js
+    notation.js → theory.js   (VexFlow globals from CDN)
+    draw.js     → notation.js, yin.js, scheduler.js, state.js (beatSec, noteCount, singing, actx)
+    state.js    → all of the above
+-->
+<script src="js/theory.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/yin.js"></script>
+<script src="js/scheduler.js"></script>
+<script src="js/notation.js"></script>
+<script src="js/draw.js"></script>
+<script src="js/state.js"></script>
+
+</body>
+</html>
