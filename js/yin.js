@@ -1,395 +1,389 @@
 // ── yin.js ────────────────────────────────────────────────────────────────────
-// Pitch detection (YIN algorithm) + octave correction + all filter strategies.
-// Depends on: audio.js (for analyser nodes, actx)
-//             theory.js (for hz2midi)
+// Pitch detection: HPS + YIN hybrid, octave correction, two filter strategies.
+// Depends on: audio.js (actx, analyser1024, analyser512)
+//             theory.js (hz2midi, CLEF_DEFS)
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
 
 // ── Noise gate ────────────────────────────────────────────────────────────────
-// Set low (0.004) because the bandpass filter in audio.js has already removed
-// most non-vocal energy. A higher gate here (e.g. 0.016) would be too
-// aggressive and cut off soft singing.
-//
-// Alternative values tried:
-//   0.016 — original value, too aggressive, cuts soft passages
-//   0.008 — Gemini's value, still somewhat aggressive
-//   0.004 — current: light gate, bandpass does the heavy lifting
+// Low threshold (0.004) because the bandpass filter in audio.js has already
+// removed most non-vocal energy before this point.
 const NOISE_GATE = 0.004;
 
 // ── Working buffers ───────────────────────────────────────────────────────────
-const buf1024 = new Float32Array(4096);
-const buf512  = new Float32Array(4096);
-const yin1024 = new Float32Array(512);
-const yin512  = new Float32Array(256);
+const timeBuf1024 = new Float32Array(4096);  // time domain — YIN
+const freqBuf     = new Float32Array(2048);  // frequency domain — HPS (magnitude)
+const yinWork     = new Float32Array(512);   // YIN scratch buffer
 
-// ── YIN core ──────────────────────────────────────────────────────────────────
-// Implements the YIN algorithm (de Cheveigné & Kawahara 2002).
+// ── DETECTION RANGE ───────────────────────────────────────────────────────────
+// Per clef, constrain pitch search to the expected voice range.
+// This prevents YIN and HPS from locking onto harmonics outside the
+// singer's register. curClef is set by state.js.
+function getDetectionRange() {
+  const def = CLEF_DEFS[curClef];
+  return def ? def.detectionRange : { minHz: 80, maxHz: 1100 };
+}
+
+// ── YIN ALGORITHM ─────────────────────────────────────────────────────────────
+// Time-domain autocorrelation method (de Cheveigné & Kawahara 2002).
 // Returns fundamental frequency in Hz, or null if no confident pitch found.
 //
-// Parameters:
-//   buf    — Float32Array of time-domain audio samples (from analyser node)
-//   sr     — sample rate (Hz)
-//   N      — number of samples to analyse (1024 or 512)
-//   yinBuf — pre-allocated working buffer of length N/2
-//
-// Why YIN and not FFT peak-picking?
-//   FFT gives frequency bins of width sr/fftSize. At sr=44100, fftSize=4096
-//   gives ~10 Hz resolution — too coarse for pitch in the lower octaves where
-//   semitones are ~12 Hz apart. YIN operates in the time domain and achieves
-//   sub-Hz precision via parabolic interpolation.
-//
-// Why not use the pitchy library?
-//   pitchy is a good choice for a build-step project. Here we stay dependency-
-//   free so the file can be dropped into any static server.
+// Strength: sub-Hz precision via parabolic interpolation.
+// Weakness: can lock onto 2f₀ or 3f₀ when the fundamental is weak
+//           (missing fundamental problem — common in certain vowels/registers).
 
-function yinCore(buf, sr, N, yinBuf) {
-  const H = N >> 1;   // half-length
+function yinDetect(buf, sr, N, yinBuf, minHz, maxHz) {
+  const H = N >> 1;
 
-  // 1. RMS gate — reject silence before running the expensive inner loop
+  // RMS gate
   let rms = 0;
   for (let i = 0; i < N; i++) rms += buf[i] * buf[i];
   if (Math.sqrt(rms / N) < NOISE_GATE) return null;
 
-  // 2. Difference function  d(τ) = Σ (x_t - x_{t+τ})²
+  // Difference function
   for (let t = 0; t < H; t++) {
     let s = 0;
-    for (let i = 0; i < H; i++) { const d = buf[i] - buf[i + t]; s += d * d; }
+    for (let i = 0; i < H; i++) { const d = buf[i] - buf[i+t]; s += d*d; }
     yinBuf[t] = s;
   }
 
-  // 3. Cumulative mean normalised difference function
+  // Cumulative mean normalised difference
   yinBuf[0] = 1;
   let run = 0;
-  for (let t = 1; t < H; t++) {
-    run += yinBuf[t];
-    yinBuf[t] = yinBuf[t] * t / run;
-  }
+  for (let t = 1; t < H; t++) { run += yinBuf[t]; yinBuf[t] = yinBuf[t]*t/run; }
 
-  // 4. Find first dip below threshold
+  // Find first dip below threshold
   const THR = 0.09;
-  let t = 2;
-  for (; t < H; t++) {
+  let t = Math.max(2, Math.floor(sr / maxHz));
+  const tMax = Math.min(H - 1, Math.floor(sr / minHz));
+  for (; t < tMax; t++) {
     if (yinBuf[t] < THR) {
-      while (t + 1 < H && yinBuf[t + 1] < yinBuf[t]) t++;
+      while (t+1 < tMax && yinBuf[t+1] < yinBuf[t]) t++;
       break;
     }
   }
-  if (t >= H || yinBuf[t] >= THR) return null;
+  if (t >= tMax || yinBuf[t] >= THR) return null;
 
-  // 5. Parabolic interpolation for sub-sample precision
-  const x0 = t > 0 ? t - 1 : t;
-  const x2 = t + 1 < H ? t + 1 : t;
+  // Parabolic interpolation for sub-sample precision
+  const x0 = t > 0 ? t-1 : t, x2 = t+1 < H ? t+1 : t;
   let best;
-  if (x0 === t)       best = yinBuf[t] <= yinBuf[x2] ? t : x2;
-  else if (x2 === t)  best = yinBuf[t] <= yinBuf[x0] ? t : x0;
+  if (x0 === t)      best = yinBuf[t] <= yinBuf[x2] ? t : x2;
+  else if (x2 === t) best = yinBuf[t] <= yinBuf[x0] ? t : x0;
   else {
-    const a = yinBuf[x0], b = yinBuf[t], c = yinBuf[x2];
-    best = t + (c - a) / (2 * (2 * b - c - a));
+    const a=yinBuf[x0], b=yinBuf[t], c=yinBuf[x2];
+    best = t + (c-a)/(2*(2*b-c-a));
   }
 
   const hz = sr / best;
-  // Constrain to human singing range: E2 (≈82 Hz) to D6 (≈1175 Hz)
-  return (hz > 80 && hz < 1200) ? hz : null;
+  return (hz >= minHz && hz <= maxHz) ? hz : null;
 }
 
-// ── Octave correction ─────────────────────────────────────────────────────────
-// YIN occasionally produces readings one octave too high or too low,
-// especially near register breaks and on vowel onset transients.
-// We compare the new reading against a recent median and, if the deviation
-// is larger than 9 semitones but close to an integer number of octaves (12
-// semitones), we shift the reading by that number of octaves.
-// If the deviation is large but NOT an octave relationship, it is a spike
-// and we return null (discard).
+// ── HARMONIC PRODUCT SPECTRUM (HPS) ──────────────────────────────────────────
+// Frequency-domain method for fundamental detection.
+//
+// Why HPS solves the missing fundamental problem:
+//   For a voice singing f₀, the spectrum contains peaks at f₀, 2f₀, 3f₀...
+//   HPS downsamples the spectrum by factors of 1, 2, 3 and multiplies them.
+//   At frequency f₀ all three downsampled spectra are large simultaneously
+//   (f₀ maps to f₀, 2f₀ maps to f₀, 3f₀ maps to f₀).
+//   At 2f₀ only one of the three is large — the product is small.
+//   The peak of HPS(f) is therefore the true fundamental, even when 2f₀
+//   has higher amplitude than f₀ in the raw spectrum.
+//
+// The three lowest harmonics (f₀, 2f₀, 3f₀) are what the user described:
+// "fundamental, octave, octave's perfect fifth" — these are harmonics 1,2,3.
 
-function octaveCorrect(rawMidi, recentArr) {
-  if (recentArr.length < 4) return rawMidi;   // not enough history yet
-  const sorted = [...recentArr].sort((a, b) => a - b);
-  const med    = sorted[Math.floor(sorted.length / 2)];
+function hpsDetect(sr, minHz, maxHz) {
+  if (!analyser1024) return null;
+  analyser1024.getFloatFrequencyData(freqBuf);
+
+  const binCount  = freqBuf.length;         // fftSize/2
+  const binWidth  = sr / (binCount * 2);    // Hz per bin
+
+  // Convert dB magnitudes to linear (clamp negatives to tiny positive)
+  // We work in linear magnitude for the product spectrum.
+  const linBuf = new Float32Array(binCount);
+  for (let i = 0; i < binCount; i++) {
+    linBuf[i] = Math.pow(10, freqBuf[i] / 20);
+    if (linBuf[i] < 1e-10) linBuf[i] = 1e-10;
+  }
+
+  // Search range in bins
+  const minBin = Math.max(1, Math.floor(minHz / binWidth));
+  const maxBin = Math.min(Math.floor(maxHz / binWidth), Math.floor(binCount / 3) - 1);
+  // We need maxBin * 3 < binCount for the third harmonic to exist
+
+  let bestBin = -1, bestVal = 0;
+
+  for (let b = minBin; b <= maxBin; b++) {
+    // HPS: product of spectrum at b, 2b, 3b
+    const val = linBuf[b] * linBuf[b*2] * linBuf[b*3];
+    if (val > bestVal) { bestVal = val; bestBin = b; }
+  }
+
+  if (bestBin < 0) return null;
+
+  // Sub-bin interpolation (parabolic) for accuracy
+  const b = bestBin;
+  let refined = b;
+  if (b > 0 && b < binCount - 1) {
+    const a = linBuf[b-1]*linBuf[(b-1)*2]*linBuf[(b-1)*3];
+    const c = linBuf[b+1]*linBuf[(b+1)*2]*linBuf[(b+1)*3];
+    refined  = b + (c - a) / (2 * (2*bestVal - c - a));
+  }
+
+  const hz = refined * binWidth;
+  return (hz >= minHz && hz <= maxHz) ? hz : null;
+}
+
+// ── FUNDAMENTAL RECONCILIATION ────────────────────────────────────────────────
+// Runs both YIN and HPS, reconciles their outputs.
+// Agreement: take average (both confident).
+// Disagreement by octave/fifth ratio: take the lower (true fundamental).
+// Irreconcilable disagreement: trust HPS (it's more robust to missing f₀).
+// Both null: return null.
+
+function detectFundamental() {
+  if (!analyser1024) return null;
+  const sr = actx.sampleRate;
+  const { minHz, maxHz } = getDetectionRange();
+
+  analyser1024.getFloatTimeDomainData(timeBuf1024);
+  const hzYin = yinDetect(timeBuf1024, sr, 1024, yinWork, minHz, maxHz);
+  const hzHps = hpsDetect(sr, minHz, maxHz);
+
+  if (hzYin === null && hzHps === null) return null;
+  if (hzYin === null) return hzHps;
+  if (hzHps === null) return hzYin;
+
+  // Both found — compare
+  const midiYin = hz2midi(hzYin);
+  const midiHps = hz2midi(hzHps);
+  const diff    = Math.abs(midiYin - midiHps);
+
+  if (diff < 1.5) {
+    // Agreement within 1.5 semitones — average them
+    return (hzYin + hzHps) / 2;
+  }
+
+  // Check for octave/fifth relationship
+  // If one is approximately double or triple the other, the lower is f₀
+  const ratio = Math.max(hzYin, hzHps) / Math.min(hzYin, hzHps);
+  if (Math.abs(ratio - 2) < 0.15 || Math.abs(ratio - 3) < 0.2) {
+    return Math.min(hzYin, hzHps);  // lower = true fundamental
+  }
+
+  // Irreconcilable — trust HPS (better fundamental recovery)
+  return hzHps;
+}
+
+// ── SILENCE SENTINEL ──────────────────────────────────────────────────────────
+const GAP = { gap: true };
+
+// ── STRATEGIES ────────────────────────────────────────────────────────────────
+// Only two strategies remain. Both are blue — the user picks one via the toggle.
+// The ACTIVE strategy is determined by activeStrategy ('responsive'|'smooth').
+//
+// RESPONSIVE (was A): OctCorr + EMA α=0.72
+//   α raised from 0.55 → 0.72 for smoother output while staying responsive.
+//   At 60fps: α=0.72 gives time constant ≈ 60ms vs 30ms at α=0.55.
+//   Still fast enough to track vibrato (5Hz cycle = 200ms period).
+//   OctCorr remains as a second safety net after HPS reconciliation.
+//
+// SMOOTH (was G): EMA α=0.08
+//   Ultra-heavy smoothing. Time constant ≈ 200ms.
+//   Best for sustained notes. Lags on fast pitch changes.
+//   No OctCorr needed — HPS already handles octave disambiguation.
+//
+// All previous strategies (B,C,D,E,F) are kept below as comments for reference.
+
+const STRATEGIES = {
+
+  responsive: {
+    id: 'responsive', name: 'Responsive', color: '#1d6fa4',
+    ema: null, recent: [], hold: 0, wasNull: true, buf: [],
+    reset() { this.ema=null; this.recent=[]; this.hold=0; this.wasNull=true; this.buf=[]; },
+    process(hz) {
+      if (hz === null) {
+        if (this.hold > 0) { this.hold--; return this.ema; }
+        return null;
+      }
+      this.hold = 5;
+      const raw = hz2midi(hz);
+      // Secondary octave correction — safety net after HPS reconciliation
+      const cor = _octaveCorrect(raw, this.recent);
+      if (cor === null) return this.ema;
+      this.recent.push(cor);
+      if (this.recent.length > 8) this.recent.shift();
+      // α=0.72: smoother than original 0.55, still responsive to pitch changes
+      this.ema = (this.ema === null) ? cor : 0.72*cor + 0.28*this.ema;
+      return this.ema;
+    },
+  },
+
+  smooth: {
+    id: 'smooth', name: 'Smooth', color: '#1d6fa4',
+    ema: null, hold: 0, wasNull: true, buf: [],
+    reset() { this.ema=null; this.hold=0; this.wasNull=true; this.buf=[]; },
+    process(hz) {
+      if (hz === null) {
+        if (this.hold > 0) { this.hold--; return this.ema; }
+        return null;
+      }
+      this.hold = 5;
+      const raw = hz2midi(hz);
+      // α=0.08: ultra-smooth, ~200ms time constant at 60fps
+      this.ema = (this.ema === null) ? raw : 0.08*raw + 0.92*this.ema;
+      return this.ema;
+    },
+  },
+
+};
+
+// ── Octave correction (internal helper) ───────────────────────────────────────
+// Secondary safety net — compares against recent median and corrects octave
+// flips that slip through HPS reconciliation.
+function _octaveCorrect(rawMidi, recentArr) {
+  if (recentArr.length < 4) return rawMidi;
+  const sorted = [...recentArr].sort((a,b) => a-b);
+  const med    = sorted[Math.floor(sorted.length/2)];
   const diff   = rawMidi - med;
   if (Math.abs(diff) > 9) {
-    const octD = Math.round(diff / 12) * 12;
-    if (Math.abs(diff - octD) < 1.5) return rawMidi - octD;  // octave flip
-    return null;  // spike — discard
+    const octD = Math.round(diff/12) * 12;
+    if (Math.abs(diff - octD) < 1.5) return rawMidi - octD;
+    return null;
   }
   return rawMidi;
 }
 
-// ── Silence sentinel ──────────────────────────────────────────────────────────
-// Pushed into pitch buffers when voice goes silent.
-// The draw routines in draw.js detect { gap:true } and lift the pen,
-// preventing interpolation across silence gaps.
-const GAP = { gap: true };
-
-// ── STRATEGIES ────────────────────────────────────────────────────────────────
-// Each strategy object:
-//   id       — single letter label
-//   name     — display name
-//   color    — hex colour for curve and legend
-//   enabled  — toggled by checkbox in UI
-//   drawFn   — 'catmull' | 'bezier' (rendering method in draw.js)
-//   buf      — pitch ring buffer [{t, midi, gpi}] + GAP sentinels
-//   wasNull  — true when last frame was silence (for sentinel injection logic)
-//   reset()  — clears filter state and buffer; preserves enabled flag
-//   process(hz) → float midi | null
-//
-// ── Currently active strategy ─────────────────────────────────────────────────
-// Strategy A is the primary curve used in the main app.
-// All others remain here for comparison in the pitch lab.
-
-const STRATEGIES = [
-
-  // ── A: OctCorr + EMA α=0.55 + Catmull-Rom ──────────────────────────────────
-  // Our workhorse. Octave correction for register breaks, single EMA pass
-  // at α=0.55 — responsive enough to follow vibrato (~5 Hz) while suppressing
-  // frame-to-frame YIN jitter. Catmull-Rom spline for smooth rendering.
-  //
-  // α=0.55 means each new reading contributes 55%, prior EMA 45%.
-  // At 60 fps the effective time constant ≈ 1/(α×60) ≈ 30 ms.
-  {
-    id:'A', name:'A — OctCorr+EMA 0.55', color:'#0891b2', enabled:true,
-    ema:null, recent:[], hold:0, wasNull:true, buf:[],
-    reset() { this.ema=null; this.recent=[]; this.hold=0; this.wasNull=true; this.buf=[]; },
-    process(hz) {
-      if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
-      this.hold = 5;
-      const raw = hz2midi(hz);
-      const cor = octaveCorrect(raw, this.recent);
-      if (cor===null) return this.ema;
-      this.recent.push(cor); if(this.recent.length>8) this.recent.shift();
-      this.ema = this.ema===null ? cor : 0.55*cor + 0.45*this.ema;
-      return this.ema;
-    },
-    drawFn: 'catmull',
-  },
-
-  // ── B: Fast buf 512 + OctCorr + EMA α=0.55 + Catmull-Rom ───────────────────
-  // Same filter as A but fed from the 512-sample analyser node.
-  // 512 samples at 44100 Hz ≈ 11.6 ms per detection cycle vs 23 ms for 1024.
-  // Hypothesis: faster input → more responsive to note onsets.
-  // Trade-off: 512-sample YIN has coarser frequency resolution at the low end.
-  {
-    id:'B', name:'B — Fast 512+EMA 0.55', color:'#16a34a', enabled:true,
-    ema:null, recent:[], hold:0, wasNull:true, buf:[],
-    reset() { this.ema=null; this.recent=[]; this.hold=0; this.wasNull=true; this.buf=[]; },
-    process(hz) {
-      if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
-      this.hold = 5;
-      const raw = hz2midi(hz);
-      const cor = octaveCorrect(raw, this.recent);
-      if (cor===null) return this.ema;
-      this.recent.push(cor); if(this.recent.length>8) this.recent.shift();
-      this.ema = this.ema===null ? cor : 0.55*cor + 0.45*this.ema;
-      return this.ema;
-    },
-    drawFn: 'catmull',
-  },
-
-  // ── C: Median-9 window (no EMA) ─────────────────────────────────────────────
-  // Sliding median over last 9 raw YIN readings. Excellent spike rejection —
-  // a single bad frame cannot move the output. No EMA on top.
-  // May appear slightly stepped on fast pitch changes (needs window to shift).
-  // Good for: noise-heavy environments, users with strong consonant transients.
-  {
-    id:'C', name:'C — Median-9 (no EMA)', color:'#ea580c', enabled:true,
-    window:[], hold:0, last:null, wasNull:true, buf:[],
-    reset() { this.window=[]; this.hold=0; this.last=null; this.wasNull=true; this.buf=[]; },
-    process(hz) {
-      if (hz===null) { if(this.hold>0){this.hold--;return this.last;} return null; }
-      this.hold = 5;
-      const raw = hz2midi(hz);
-      if (this.last!==null && Math.abs(raw-this.last)>9) {
-        const octD = Math.round((raw-this.last)/12)*12;
-        if (Math.abs((raw-this.last)-octD)<1.5) this.window.push(raw-octD);
-        // else discard spike entirely
-      } else {
-        this.window.push(raw);
-      }
-      if (this.window.length>9) this.window.shift();
-      const s = [...this.window].sort((a,b)=>a-b);
-      this.last = s[Math.floor(s.length/2)];
-      return this.last;
-    },
-    drawFn: 'catmull',
-  },
-
-  // ── D: Double EMA (α=0.75 → α=0.85) ────────────────────────────────────────
-  // Two-pole IIR low-pass filter implemented as cascaded EMAs.
-  // Pass 1 (α=0.75): nearly raw, removes single-frame spikes.
-  // Pass 2 (α=0.85): smooths residual jitter from pass 1.
-  // Combined roll-off is steeper than a single EMA, which helps with
-  // high-frequency noise while keeping transient response fast.
-  //
-  // Alternative cascade values tried (commented for reference):
-  //   Pass 1 α=0.85 → Pass 2 α=0.90  — very smooth but noticeably lagged
-  //   Pass 1 α=0.65 → Pass 2 α=0.80  — similar to A but slightly cleaner
-  {
-    id:'D', name:'D — Double EMA (0.75→0.85)', color:'#7c3aed', enabled:true,
-    ema1:null, ema2:null, recent:[], hold:0, wasNull:true, buf:[],
-    reset() { this.ema1=null; this.ema2=null; this.recent=[]; this.hold=0; this.wasNull=true; this.buf=[]; },
-    process(hz) {
-      if (hz===null) { if(this.hold>0){this.hold--;return this.ema2;} return null; }
-      this.hold = 5;
-      const raw = hz2midi(hz);
-      const cor = octaveCorrect(raw, this.recent);
-      if (cor===null) return this.ema2;
-      this.recent.push(cor); if(this.recent.length>8) this.recent.shift();
-      this.ema1 = this.ema1===null ? cor : 0.75*cor + 0.25*this.ema1;
-      this.ema2 = this.ema2===null ? this.ema1 : 0.85*this.ema1 + 0.15*this.ema2;
-      return this.ema2;
-    },
-    drawFn: 'catmull',
-  },
-
-  // ── E: AI friend — EMA α=0.2 + Bézier midpoint rendering ───────────────────
-  // Heavy smoothing (α=0.2 means 80% weight on prior value).
-  // At 60 fps, effective time constant ≈ 83 ms — noticeably lagged on fast
-  // pitch changes but very smooth on sustained notes.
-  // Uses quadratic Bézier through midpoints instead of Catmull-Rom.
-  // The Bézier rendering method tends to soften sharp corners more aggressively.
-  //
-  // Alternative α values (no octave correction in this strategy by design):
-  //   α=0.15 — extremely smooth, lags ~110 ms on step changes
-  //   α=0.30 — similar to A but slightly heavier
-  //   α=0.50 — converges toward strategy A
-  {
-    id:'E', name:'E — AI: EMA 0.2+Bézier', color:'#ca8a04', enabled:true,
-    ema:null, hold:0, wasNull:true, buf:[],
-    reset() { this.ema=null; this.hold=0; this.wasNull=true; this.buf=[]; },
-    process(hz) {
-      if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
-      this.hold = 5;
-      const raw = hz2midi(hz);
-      this.ema = this.ema===null ? raw : 0.2*raw + 0.8*this.ema;
-      return this.ema;
-    },
-    drawFn: 'bezier',
-  },
-
-  // ── F: Schmitt Trigger (dead-band filter) ────────────────────────────────────
-  // Only updates the output when the new reading deviates by more than a
-  // threshold (0.4 semitones ≈ 40 cents). Within the dead band the output
-  // is held. Outside the dead band it tracks at 20% per frame.
-  // Good for: eliminating micro-jitter on sustained notes, creating a
-  // "snap-to-pitch" feel. Downside: feels sticky on intentional pitch bends.
-  //
-  // Threshold alternatives tried:
-  //   0.2 semitones — very stable, loses some detail on vibrato
-  //   0.6 semitones — close to a quarter tone, too coarse for fine display
-  //   0.4 semitones — current balance (chosen value)
-  //
-  // Tracking rate alternatives tried:
-  //   0.10 — very slow, lags on intentional pitch changes
-  //   0.35 — faster, closer to a regular EMA
-  //   0.20 — current (chosen value)
-  {
-    id:'F', name:'F — Schmitt Trigger', color:'#be185d', enabled:true,
-    ema:null, hold:0, wasNull:true, buf:[],
-    reset() { this.ema=null; this.hold=0; this.wasNull=true; this.buf=[]; },
-    process(hz) {
-      if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
-      this.hold = 5;
-      const raw = hz2midi(hz);
-      if (this.ema===null) {
-        this.ema = raw;
-      } else {
-        const d = raw - this.ema;
-        if (Math.abs(d) > 0.4) this.ema += d * 0.20;
-        // else: within dead band — output held, no update
-      }
-      return this.ema;
-    },
-    drawFn: 'catmull',
-  },
-
-  // ── G: Golden Smooth (α=0.08) ───────────────────────────────────────────────
-  // Ultra-heavy EMA. α=0.08 means only 8% of each new reading enters the
-  // output. Time constant ≈ 200 ms — very laggy on step changes, extremely
-  // smooth on sustained notes. Named "golden" because 1-0.08 ≈ 0.92 ≈ 1/φ².
-  // Primarily useful as a reference for how much lag a pure smoothing approach
-  // introduces at the extreme end.
-  //
-  // Alternative values tried:
-  //   α=0.05 — barely moves, more useful as a pitch floor estimator
-  //   α=0.12 — slightly more responsive, still very smooth
-  //   α=0.08 — chosen for maximum contrast with strategy A
-  {
-    id:'G', name:'G — Golden Smooth (α=0.08)', color:'#0369a1', enabled:true,
-    ema:null, hold:0, wasNull:true, buf:[],
-    reset() { this.ema=null; this.hold=0; this.wasNull=true; this.buf=[]; },
-    process(hz) {
-      if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
-      this.hold = 5;
-      const raw = hz2midi(hz);
-      this.ema = this.ema===null ? raw : 0.08*raw + 0.92*this.ema;
-      return this.ema;
-    },
-    drawFn: 'catmull',
-  },
-
-];
-
-// ── Pitch buffer size ──────────────────────────────────────────────────────────
-// 1200 points at 60 fps ≈ 20 seconds of history.
-// Enough for several loops without excessive memory use.
-const PBUF = 1200;
-
 // ── processPitchFrame ─────────────────────────────────────────────────────────
-// Called once per RAF frame. Reads from both analyser nodes, runs YIN,
-// feeds all enabled strategies, pushes results to their pitch buffers.
-// currentGlobalPi: the global phrase-beat index for the current beat.
+// Called once per RAF frame during SINGING state.
+// Uses the hybrid detector and feeds the active strategy.
+// currentGlobalPi: beat index for X coordinate mapping.
 
 function processPitchFrame(currentGlobalPi) {
-  if (!analyser1024 || !analyser512) return;
-  const sr = actx.sampleRate;
+  if (!analyser1024) return;
 
-  analyser1024.getFloatTimeDomainData(buf1024);
-  analyser512.getFloatTimeDomainData(buf512);
+  const hz = detectFundamental();
+  const s  = STRATEGIES[activeStrategy];  // activeStrategy from state.js
+  const sm = s.process(hz);
 
-  const hzShared = yinCore(buf1024, sr, 1024, yin1024);
-  const hzFast   = yinCore(buf512,  sr,  512, yin512);
-
-  // Strategy B uses the fast 512-sample analyser; all others use 1024.
-  const inputs = [hzShared, hzFast, hzShared, hzShared, hzShared, hzShared, hzShared];
-  const now    = actx.currentTime;
-
-  STRATEGIES.forEach((s, i) => {
-    const sm = s.process(inputs[i]);
-    if (sm !== null) {
-      if (s.wasNull) s.wasNull = false;
-      s.buf.push({ t: now, midi: sm, gpi: currentGlobalPi });
-      if (s.buf.length > PBUF) s.buf.shift();
-    } else {
-      // True silence (hold expired) — inject gap sentinel once
-      if (!s.wasNull) {
-        s.buf.push(GAP);
-        s.wasNull = true;
-      }
-    }
-  });
-}
-
-// ── resetStrategies ───────────────────────────────────────────────────────────
-// Called at session start and loop boundaries.
-// Preserves each strategy's enabled flag.
-function resetStrategies() {
-  STRATEGIES.forEach(s => {
-    const en = s.enabled;
-    s.reset();
-    s.enabled = en;
-  });
-}
-
-// ── onLoopBoundary ────────────────────────────────────────────────────────────
-// Called when a new loop starts. Injects gap sentinels to visually separate
-// loops, trims old data, resets filter state for clean re-acquisition.
-function onLoopBoundary() {
-  STRATEGIES.forEach(s => {
-    if (s.buf.length > 0 && !s.buf[s.buf.length - 1].gap) {
+  if (sm !== null) {
+    if (s.wasNull) s.wasNull = false;
+    s.buf.push({ t: actx.currentTime, midi: sm, gpi: currentGlobalPi });
+    if (s.buf.length > 1200) s.buf.shift();
+  } else {
+    if (!s.wasNull) {
       s.buf.push(GAP);
+      s.wasNull = true;
     }
-    if (s.buf.length > PBUF) s.buf = s.buf.slice(s.buf.length - PBUF);
-    const en = s.enabled;
-    s.reset();
-    s.enabled = en;
-  });
+  }
 }
+
+// ── onLoopBoundary / onSessionStart ──────────────────────────────────────────
+// Called by state.js at session start and (if ever looping) at loop boundaries.
+function onSessionStart() {
+  STRATEGIES.responsive.reset();
+  STRATEGIES.smooth.reset();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// ARCHIVED STRATEGIES — kept for reference, not used in the main app.
+// Re-enable by adding to STRATEGIES object and wiring up in state.js.
+// ────────────────────────────────────────────────────────────────────────────
+
+/*
+// B: Fast 512-sample buffer + EMA 0.55
+const SB_archived = {
+  id:'B', name:'B — Fast 512+EMA 0.55', color:'#16a34a',
+  ema:null, recent:[], hold:0, wasNull:true, buf:[],
+  reset() { this.ema=null; this.recent=[]; this.hold=0; this.wasNull=true; this.buf=[]; },
+  process(hz) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
+    this.hold=5; const raw=hz2midi(hz); const cor=_octaveCorrect(raw,this.recent);
+    if (cor===null) return this.ema;
+    this.recent.push(cor); if(this.recent.length>8) this.recent.shift();
+    this.ema = this.ema===null ? cor : 0.55*cor + 0.45*this.ema; return this.ema;
+  },
+};
+
+// C: Median-9 window, no EMA
+const SC_archived = {
+  id:'C', name:'C — Median-9', color:'#ea580c',
+  window:[], hold:0, last:null, wasNull:true, buf:[],
+  reset() { this.window=[]; this.hold=0; this.last=null; this.wasNull=true; this.buf=[]; },
+  process(hz) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.last;} return null; }
+    this.hold=5; const raw=hz2midi(hz);
+    if (this.last!==null && Math.abs(raw-this.last)>9) {
+      const octD=Math.round((raw-this.last)/12)*12;
+      if (Math.abs((raw-this.last)-octD)<1.5) this.window.push(raw-octD);
+    } else this.window.push(raw);
+    if(this.window.length>9) this.window.shift();
+    const s=[...this.window].sort((a,b)=>a-b);
+    this.last=s[Math.floor(s.length/2)]; return this.last;
+  },
+};
+
+// D: Double EMA (0.75 → 0.85)
+const SD_archived = {
+  id:'D', name:'D — Double EMA', color:'#7c3aed',
+  ema1:null, ema2:null, recent:[], hold:0, wasNull:true, buf:[],
+  reset() { this.ema1=null; this.ema2=null; this.recent=[]; this.hold=0; this.wasNull=true; this.buf=[]; },
+  process(hz) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema2;} return null; }
+    this.hold=5; const raw=hz2midi(hz); const cor=_octaveCorrect(raw,this.recent);
+    if (cor===null) return this.ema2;
+    this.recent.push(cor); if(this.recent.length>8) this.recent.shift();
+    this.ema1 = this.ema1===null ? cor : 0.75*cor + 0.25*this.ema1;
+    this.ema2 = this.ema2===null ? this.ema1 : 0.85*this.ema1 + 0.15*this.ema2; return this.ema2;
+  },
+};
+
+// E: AI friend — EMA 0.2 + Bézier midpoint rendering
+const SE_archived = {
+  id:'E', name:'E — AI: EMA 0.2+Bézier', color:'#ca8a04',
+  ema:null, hold:0, wasNull:true, buf:[],
+  reset() { this.ema=null; this.hold=0; this.wasNull=true; this.buf=[]; },
+  process(hz) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
+    this.hold=5; const raw=hz2midi(hz);
+    this.ema = this.ema===null ? raw : 0.2*raw + 0.8*this.ema; return this.ema;
+  },
+};
+
+// F: Schmitt Trigger (dead-band filter)
+const SF_archived = {
+  id:'F', name:'F — Schmitt Trigger', color:'#be185d',
+  ema:null, hold:0, wasNull:true, buf:[],
+  reset() { this.ema=null; this.hold=0; this.wasNull=true; this.buf=[]; },
+  process(hz) {
+    if (hz===null) { if(this.hold>0){this.hold--;return this.ema;} return null; }
+    this.hold=5; const raw=hz2midi(hz);
+    if (this.ema===null) this.ema=raw;
+    else { const d=raw-this.ema; if(Math.abs(d)>0.4) this.ema += d*0.20; }
+    return this.ema;
+  },
+};
+
+// Original YIN-only detector (before HPS hybrid)
+function yinCore_archived(buf, sr, N, yinBuf) {
+  const H = N >> 1;
+  let rms = 0;
+  for (let i = 0; i < N; i++) rms += buf[i]*buf[i];
+  if (Math.sqrt(rms/N) < NOISE_GATE) return null;
+  for (let t = 0; t < H; t++) {
+    let s = 0; for (let i = 0; i < H; i++) { const d=buf[i]-buf[i+t]; s+=d*d; } yinBuf[t]=s;
+  }
+  yinBuf[0]=1; let run=0;
+  for (let t=1;t<H;t++){run+=yinBuf[t];yinBuf[t]=yinBuf[t]*t/run;}
+  const THR=0.09; let t=2;
+  for(;t<H;t++){if(yinBuf[t]<THR){while(t+1<H&&yinBuf[t+1]<yinBuf[t])t++;break;}}
+  if(t>=H||yinBuf[t]>=THR) return null;
+  const x0=t>0?t-1:t,x2=t+1<H?t+1:t; let best;
+  if(x0===t) best=yinBuf[t]<=yinBuf[x2]?t:x2;
+  else if(x2===t) best=yinBuf[t]<=yinBuf[x0]?t:x0;
+  else{const a=yinBuf[x0],b=yinBuf[t],c=yinBuf[x2];best=t+(c-a)/(2*(2*b-c-a));}
+  const hz=sr/best; return(hz>80&&hz<1200)?hz:null;
+}
+*/
