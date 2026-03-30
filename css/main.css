@@ -1,6 +1,6 @@
 /* ── main.css ─────────────────────────────────────────────────────────────────
+   @version 0.2
    SightSing — all styles.
-   Design tokens via CSS custom properties.
    ─────────────────────────────────────────────────────────────────────────── */
 
 @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -34,19 +34,30 @@ body {
   min-height: 100vh;
 }
 
+/* ── VERSION BADGE ── */
+.version-badge {
+  position: fixed;
+  bottom: 10px;
+  right: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .55rem;
+  color: var(--rule);
+  letter-spacing: .04em;
+  z-index: 50;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* ── HEADER ── */
 .hdr {
   width: 100%;
   background: var(--paper);
   border-bottom: 1px solid var(--uiBorder);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between;
   padding: 10px 18px;
   flex-shrink: 0;
   position: sticky; top: 0; z-index: 10;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px; flex-wrap: wrap;
 }
 .logo    { font-size: 1.1rem; font-weight: 700; white-space: nowrap; }
 .logo em { font-style: italic; font-weight: 400; color: var(--accent); }
@@ -69,127 +80,108 @@ input[type=range] { width: 60px; accent-color: var(--accent); cursor: pointer; }
 .main {
   width: 100%; max-width: 860px;
   display: flex; flex-direction: column; align-items: center;
-  padding: 14px 14px 28px; gap: 11px; flex: 1;
+  padding: 16px 14px 32px; gap: 12px; flex: 1;
 }
 
-/* ── DRILL CONTROLS ROW ── */
-.drill-row {
+/* ── INTERVAL ROW ── */
+.interval-row {
   width: 100%;
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
-.drill-row select { font-size: .82rem; padding: 6px 8px; }
-
-/* ── PITCH TOGGLE ── */
-.pitch-toggle {
-  display: flex;
-  border: 1.5px solid var(--uiBorder);
-  border-radius: 3px;
-  overflow: hidden;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-.pitch-toggle button {
+.interval-row select { font-size: .82rem; padding: 6px 8px; }
+.interval-label {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: .58rem; letter-spacing: .05em; text-transform: uppercase;
-  padding: 6px 14px; border: none; background: var(--paper);
-  color: var(--muted); cursor: pointer; transition: all .12s;
-  border-right: 1px solid var(--uiBorder);
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  font-size: .58rem; color: var(--muted);
+  letter-spacing: .06em; text-transform: uppercase;
 }
-.pitch-toggle button:last-child { border-right: none; }
-.pitch-toggle button.active { background: var(--blue); color: white; }
-.pitch-toggle button:not(.active):hover { background: var(--uiBg); color: var(--ink); }
 
 /* ── STAFF CARD ── */
-#staffCard {
+.staff-card {
   width: 100%;
   background: var(--paper);
   border: 1px solid var(--uiBorder);
   border-radius: 3px;
-  padding: 14px 14px 10px;
+  padding: 16px 14px 12px;
   box-shadow: 0 2px 16px rgba(0,0,0,.06);
   flex-shrink: 0;
 }
-.staff-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: .52rem; color: var(--rule);
-  letter-spacing: .06em; text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.canvas-intro-wrap { width: 100%; margin-bottom: 10px; }
-.canvas-drill-wrap { width: 100%; }
-#canvasIntro, #canvasDrill { display: block; width: 100%; }
-
-/* ── READOUT ── */
-.readout-row {
-  width: 100%;
-  display: flex; align-items: baseline; gap: 10px;
-  padding: 6px 2px;
-}
-.readout-note {
-  font-size: 1.6rem; font-weight: 700; min-width: 32px;
-  transition: color .08s; color: var(--ink);
-}
-.readout-cents {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: .72rem; color: var(--muted); min-width: 42px;
-}
+#mainCanvas { display: block; width: 100%; }
 
 /* ── STATUS ── */
 .status-msg {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: .6rem; color: var(--muted);
-  text-align: center; min-height: 14px;
+  font-size: .65rem; color: var(--muted);
+  letter-spacing: .06em; text-align: center;
+  min-height: 16px; width: 100%;
+}
+
+/* ── READOUT ── */
+.readout-row {
   width: 100%;
+  display: flex; align-items: baseline; justify-content: center; gap: 10px;
+  min-height: 36px;
+}
+.readout-note {
+  font-size: 1.7rem; font-weight: 700; min-width: 34px;
+  text-align: right; transition: color .08s; color: var(--ink);
+}
+.readout-cents {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .72rem; color: var(--muted); min-width: 44px;
 }
 
 /* ── BUTTONS ── */
-.btn-area {
+
+/* Ready / Review state: Tonic (left) + Sing! (right) */
+.ready-btns {
   width: 100%;
-  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  display: flex; gap: 10px;
 }
-.btn-main {
-  width: 100%;
+
+.btn-tonic {
+  flex: 1;
   font-family: 'Libre Baskerville', serif;
-  font-size: 1rem; font-weight: 700; letter-spacing: .03em;
-  padding: 15px 0; border-radius: 3px; border: none;
+  font-size: .9rem; font-style: italic;
+  padding: 14px 0; border-radius: 3px;
+  background: transparent; color: var(--ink2);
+  border: 1.5px solid var(--uiBorder);
+  cursor: pointer;
+  transition: background .12s, border-color .12s, transform .07s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; user-select: none;
+}
+.btn-tonic:hover  { background: var(--uiBg); border-color: var(--ink2); }
+.btn-tonic:active { transform: scale(.97); }
+
+.btn-sing {
+  flex: 2;
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.05rem; font-weight: 700; letter-spacing: .03em;
+  padding: 14px 0; border-radius: 3px; border: none;
+  background: var(--ink); color: var(--paper);
   cursor: pointer;
   transition: background .12s, transform .07s;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation; user-select: none;
 }
-.btn-main:active { transform: scale(.98); }
-.btn-start  { background: var(--ink); color: var(--paper); }
-.btn-start:hover  { background: var(--ink2); }
-.btn-start:disabled { opacity: .3; cursor: default; pointer-events: none; }
+.btn-sing:hover  { background: var(--ink2); }
+.btn-sing:active { transform: scale(.98); }
 
-.btn-row { width: 100%; display: flex; gap: 10px; }
-.btn-half {
-  flex: 1;
+/* Recording state: single large red Stop */
+.btn-stop {
+  width: 100%;
   font-family: 'Libre Baskerville', serif;
-  font-size: .92rem; font-weight: 700;
-  padding: 14px 0; border-radius: 3px;
-  cursor: pointer; transition: background .12s, transform .07s;
-  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  font-size: 1rem; font-weight: 700; letter-spacing: .03em;
+  padding: 16px 0; border-radius: 3px;
+  background: transparent; color: var(--accent);
+  border: 2px solid var(--accent);
+  cursor: pointer;
+  transition: background .12s, color .12s, transform .07s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; user-select: none;
 }
-.btn-half:active { transform: scale(.97); }
-.btn-retry { background: var(--ink); color: var(--paper); border: none; }
-.btn-retry:hover { background: var(--ink2); }
-.btn-new-drill {
-  background: transparent; color: var(--ink2);
-  border: 1.5px solid var(--uiBorder);
-  font-weight: 400; font-style: italic;
-}
-.btn-new-drill:hover { border-color: var(--ink2); color: var(--ink); }
-
-.btn-escape {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: .6rem; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--muted); background: none; border: none;
-  padding: 6px 0; cursor: pointer; width: 100%; text-align: center;
-}
-.btn-escape:hover { color: var(--accent); }
+.btn-stop:hover  { background: var(--accent); color: var(--paper); }
+.btn-stop:active { transform: scale(.98); }
 
 .hidden { display: none !important; }
 
@@ -203,12 +195,12 @@ input[type=range] { width: 60px; accent-color: var(--accent); cursor: pointer; }
 .ov.gone { display: none; }
 .ov-title    { font-size: 2rem; font-weight: 700; }
 .ov-title em { font-style: italic; font-weight: 400; color: var(--accent); }
-.ov-body     { font-size: .9rem; color: var(--muted); line-height: 1.8; max-width: 340px; }
+.ov-body     { font-size: .9rem; color: var(--muted); line-height: 1.8; max-width: 320px; }
 .ov-note {
   font-family: 'IBM Plex Mono', monospace; font-size: .6rem; color: var(--ink2);
   line-height: 1.9; background: var(--uiBg); padding: 12px 16px;
   border-radius: 2px; border: 1px solid var(--uiBorder);
-  max-width: 340px; width: 100%; text-align: left;
+  max-width: 320px; width: 100%; text-align: left;
 }
 .ov-btn {
   font-family: 'Libre Baskerville', serif; font-size: .9rem; font-weight: 700;

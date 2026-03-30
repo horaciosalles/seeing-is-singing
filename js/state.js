@@ -1,51 +1,48 @@
 // ── state.js ──────────────────────────────────────────────────────────────────
+// @version 0.2
 // App state machine, RAF loop, session control, all UI wiring.
-// States: READY → METRO → TUNING → SINGING → REVIEW
-// Depends on: all other modules.
+// States: READY → METRO → SINGING → REVIEW
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
 
-// ── Shared mutable state (read by other modules) ──────────────────────────────
-let curKey       = 'C';
-let curClef      = 'G8vb';      // Default to tenor — most common use case
-let curInterval  = 6;           // Index into INTERVALS array (Perfect 5th)
-let curDirection = 'asc';
-let bpm          = 66;
-let beatSec      = 60 / 66;
-let activeStrategy = 'responsive';
+const VERSION = 'v0.2';
 
-// ── App states ────────────────────────────────────────────────────────────────
-// READY   : showing staff, waiting for Start
-// METRO   : measure 1 — metronome only, no mic
-// TUNING  : measure 2 — chord + interval notes playing, no mic
-// SINGING : measures 3–4 — mic active, pitch curve drawing
-// REVIEW  : curve frozen, waiting for Try Again or New Drill
+// ── Shared mutable state ──────────────────────────────────────────────────────
+let curKey      = 'C';
+let curClef     = 'G8vb';   // default: tenor
+let curInterval = 6;        // index into INTERVALS (Perfect 5th)
+let bpm         = 66;
+// beatSec is declared in theory.js and updated here on BPM change
+
+// ── App state ─────────────────────────────────────────────────────────────────
+// READY   : staff visible, Tonic + Sing! buttons shown
+// METRO   : 4 metronome clicks, no mic, no UI change on staff
+// SINGING : mic live, pitch curve drawing, red Stop button shown
+// REVIEW  : curve frozen, Tonic + Sing! buttons return
 
 let appState = 'READY';
 
 function setState(s) {
   appState = s;
-  const btnStart  = document.getElementById('btnStart');
-  const btnStop   = document.getElementById('btnStop');
-  const reviewDiv = document.getElementById('reviewBtns');
+  const readyBtns   = document.getElementById('readyBtns');
+  const stopBtn     = document.getElementById('stopBtn');
+  const statusEl    = document.getElementById('statusMsg');
 
-  btnStart.classList.toggle('hidden',  s !== 'READY');
-  btnStop.classList.toggle('hidden',   s !== 'METRO' && s !== 'TUNING' && s !== 'SINGING');
-  reviewDiv.classList.toggle('hidden', s !== 'REVIEW');
+  readyBtns.classList.toggle('hidden', s !== 'READY' && s !== 'REVIEW');
+  stopBtn.classList.toggle('hidden',   s !== 'METRO' && s !== 'SINGING');
 
   const msgs = {
-    READY:   'Press Start to begin',
-    METRO:   'Measure 1 — listen and prepare',
-    TUNING:  'Measure 2 — hear the interval',
-    SINGING: 'Sing — match each note',
-    REVIEW:  'Review — Try Again or New Drill',
+    READY:   '',
+    METRO:   'Listen…',
+    SINGING: 'Sing',
+    REVIEW:  '',
   };
-  setStatus(msgs[s] || '');
+  if (statusEl) statusEl.textContent = msgs[s] || '';
 }
 
 // ── RAF loop ──────────────────────────────────────────────────────────────────
-let rafId   = null;
-let singing = false;   // true only during SINGING state
+let rafId          = null;
+let singing        = false;
 let currentGlobalPi = -1;
 
 function rafLoop() {
@@ -54,26 +51,31 @@ function rafLoop() {
 
   const now = actx ? actx.currentTime : 0;
 
-  // Drain visual beat queue from scheduler.js
+  // Drain visual beat queue
   while (vBeatQueue.length && vBeatQueue[0].t <= now) {
     const b = vBeatQueue.shift();
 
     if (b.kind === 'metro') {
+      singing = false;
       if (appState !== 'METRO') setState('METRO');
-      singing = false;
 
-    } else if (b.kind === 'tuning') {
-      if (appState !== 'TUNING') setState('TUNING');
-      singing = false;
-
-    } else if (b.kind === 'drill') {
+    } else if (b.kind === 'note-onset') {
+      // ── BOUNCE BUG FIX ──
+      // Only 'note-onset' events update currentGlobalPi.
+      // 'drill-tick' events (beats 5,6,7,9,10,11) are consumed below
+      // but do NOT change the note position, preventing the curve from
+      // snapping back to the start of the measure on every internal beat.
+      singing = true;
+      currentGlobalPi = b.globalPi;
       if (appState !== 'SINGING') setState('SINGING');
-      singing       = true;
-      currentGlobalPi = b.beat;
+
+    } else if (b.kind === 'drill-tick') {
+      // Internal beat — keep singing flag alive, do nothing else
+      singing = true;
     }
   }
 
-  // Pitch detection — only while in SINGING state
+  // Pitch detection
   if (singing && appState === 'SINGING') {
     processPitchFrame(currentGlobalPi);   // yin.js
     updateReadout();
@@ -82,22 +84,19 @@ function rafLoop() {
   drawFrame();   // draw.js
 }
 
-// ── Session control ────────────────────────────────────────────────────────────
+// ── Session ────────────────────────────────────────────────────────────────────
 function enterSession() {
-  onSessionStart();    // yin.js — resets both strategies
-  singing          = false;
-  currentGlobalPi  = -1;
-  beatSec          = 60 / bpm;
+  resetPitch();           // yin.js
+  singing         = false;
+  currentGlobalPi = -1;
+  beatSec         = 60 / bpm;
 
-  const { note1, note2 } = getDrillNotes(curKey, INTERVALS[curInterval].semitones, curDirection, curClef);
-  const chordNotes       = getChordNotes(curKey, curClef);
-
-  startScheduler(note1, note2, chordNotes);   // scheduler.js
+  startScheduler();       // scheduler.js
   setState('METRO');
   rafId = requestAnimationFrame(rafLoop);
 }
 
-// Called by scheduler.js via setTimeout after beat 15 completes
+// Called by scheduler.js when all 12 beats complete
 function onDrillComplete() {
   singing = false;
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
@@ -110,43 +109,37 @@ function stopSession() {
   stopScheduler();
   if (actx && actx.state === 'suspended') actx.resume();
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-  setState('READY');
+  setState('REVIEW');
   drawFrame();
 }
 
-// ── Readout ───────────────────────────────────────────────────────────────────
+// ── Readout ────────────────────────────────────────────────────────────────────
 function updateReadout() {
-  const s = STRATEGIES[activeStrategy];
-  if (!s) return;
-  let sm = null;
-  for (let j = s.buf.length-1; j >= 0; j--) {
-    if (!s.buf[j].gap) { sm = s.buf[j].midi; break; }
-  }
+  const p  = getLatestPitch();   // yin.js
   const ne = document.getElementById('readoutNote');
   const ce = document.getElementById('readoutCents');
-  const he = document.getElementById('readoutHz');
-  if (!ne) return;
-  if (sm === null) {
-    ne.textContent = '—'; ne.style.color = ''; ce.textContent = ''; he.textContent = '';
-    return;
-  }
-  const nearest = Math.round(sm);
-  const cents   = (sm - nearest) * 100;
-  ne.textContent = NOTE_NAMES[mpc(nearest)];
-  ne.style.color = Math.abs(cents) < 25 ? '#1A6638'
-                 : Math.abs(cents) < 50 ? '#9B6800'
-                 :                        '#8B2020';
-  ce.textContent = (cents >= 0 ? '+' : '') + cents.toFixed(0) + '¢';
-  he.textContent = ''; // Hz display omitted in main app for cleanliness
+  if (!ne || !ce) return;
+  if (!p) { ne.textContent = '—'; ne.style.color = ''; ce.textContent = ''; return; }
+  ne.textContent = p.noteName;
+  ne.style.color = Math.abs(p.cents) < 25 ? '#1A6638'
+                 : Math.abs(p.cents) < 50 ? '#9B6800'
+                 :                           '#8B2020';
+  ce.textContent = (p.cents >= 0 ? '+' : '') + p.cents.toFixed(0) + '¢';
 }
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
-function setStatus(msg) {
-  const el = document.getElementById('statusMsg');
-  if (el) el.textContent = msg;
+// ── Interval selector ──────────────────────────────────────────────────────────
+function buildIntervalSelect() {
+  const sel = document.getElementById('intervalS');
+  if (!sel) return;
+  INTERVALS.forEach((iv, i) => {
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = iv.name;
+    if (i === curInterval) opt.selected = true;
+    sel.appendChild(opt);
+  });
 }
 
-// ── Boot & wiring ─────────────────────────────────────────────────────────────
+// ── UI wiring ─────────────────────────────────────────────────────────────────
 document.getElementById('grantBtn').onclick = async () => {
   const ok = await initMic();
   if (ok) {
@@ -159,94 +152,50 @@ document.getElementById('grantBtn').onclick = async () => {
   }
 };
 
-document.getElementById('btnStart').onclick = () => {
+document.getElementById('btnSing').onclick = () => {
   if (!actx) return;
   if (actx.state === 'suspended') actx.resume().then(enterSession);
   else enterSession();
 };
 
-document.getElementById('btnStop').onclick = () => {
-  stopSession();
+document.getElementById('btnTonic').onclick = () => {
+  playTonic(curKey, curClef);   // audio.js
 };
 
-document.getElementById('btnRetry').onclick = () => {
-  // Clear only the active strategy buffer, re-enter session
-  STRATEGIES[activeStrategy].reset();
-  enterSession();
-};
-
-document.getElementById('btnNewDrill').onclick = () => {
-  // Advance interval index and restart
-  curInterval = (curInterval + 1) % INTERVALS.length;
-  document.getElementById('intervalS').value = curInterval;
-  onSessionStart();
-  rebuildNotation();
-  setState('READY');
-};
+document.getElementById('stopBtn').onclick = stopSession;
 
 document.getElementById('keyS').onchange = function () {
   curKey = this.value;
-  if (appState !== 'READY' && appState !== 'REVIEW') stopSession();
-  rebuildNotation();
+  if (appState === 'METRO' || appState === 'SINGING') stopSession();
+  else { resetPitch(); rebuildNotation(); }
 };
 
 document.getElementById('clefS').onchange = function () {
   curClef = this.value;
-  if (appState !== 'READY' && appState !== 'REVIEW') stopSession();
-  rebuildNotation();
+  if (appState === 'METRO' || appState === 'SINGING') stopSession();
+  else { resetPitch(); rebuildNotation(); }
 };
 
 document.getElementById('intervalS').onchange = function () {
   curInterval = +this.value;
-  if (appState !== 'READY' && appState !== 'REVIEW') stopSession();
-  rebuildNotation();
-};
-
-document.getElementById('directionS').onchange = function () {
-  curDirection = this.value;
-  if (appState !== 'READY' && appState !== 'REVIEW') stopSession();
-  rebuildNotation();
+  if (appState === 'METRO' || appState === 'SINGING') stopSession();
+  else { resetPitch(); rebuildNotation(); }
 };
 
 document.getElementById('bpmR').oninput = function () {
   bpm     = +this.value;
-  beatSec = 60 / bpm;
+  beatSec = 60 / bpm;   // updates shared var in theory.js
   document.getElementById('bpmV').textContent = bpm;
 };
 
-// ── Pitch tracking toggle ─────────────────────────────────────────────────────
-document.getElementById('toggleResponsive').onclick = () => {
-  activeStrategy = 'responsive';
-  _updateToggleUI();
-  STRATEGIES[activeStrategy].reset();
-};
-document.getElementById('toggleSmooth').onclick = () => {
-  activeStrategy = 'smooth';
-  _updateToggleUI();
-  STRATEGIES[activeStrategy].reset();
-};
-function _updateToggleUI() {
-  document.getElementById('toggleResponsive').classList.toggle('active', activeStrategy === 'responsive');
-  document.getElementById('toggleSmooth').classList.toggle('active', activeStrategy === 'smooth');
-}
-
-// ── Populate interval selector ────────────────────────────────────────────────
-function buildIntervalSelect() {
-  const sel = document.getElementById('intervalS');
-  INTERVALS.forEach((iv, i) => {
-    const opt = document.createElement('option');
-    opt.value = i; opt.textContent = iv.name;
-    if (i === curInterval) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
+// ── Version badge ──────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const badge = document.getElementById('versionBadge');
+  if (badge) badge.textContent = VERSION;
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 buildIntervalSelect();
-_updateToggleUI();
-
-// Set clef selector to default
 document.getElementById('clefS').value = curClef;
-
 initNotation();   // notation.js — registers ResizeObserver
 requestAnimationFrame(() => requestAnimationFrame(() => rebuildNotation()));
