@@ -11,8 +11,7 @@ let curClef      = 'G8vb';      // Default to tenor — most common use case
 let curInterval  = 6;           // Index into INTERVALS array (Perfect 5th)
 let curDirection = 'asc';
 let bpm          = 66;
-// beatSec is declared in theory.js (loaded first) so scheduler.js can read it.
-// Updated here whenever BPM changes.
+let beatSec      = 60 / 66;
 let activeStrategy = 'responsive';
 
 // ── App states ────────────────────────────────────────────────────────────────
@@ -125,9 +124,10 @@ function updateReadout() {
   }
   const ne = document.getElementById('readoutNote');
   const ce = document.getElementById('readoutCents');
-  if (!ne || !ce) return;   // guard against missing DOM elements
+  const he = document.getElementById('readoutHz');
+  if (!ne) return;
   if (sm === null) {
-    ne.textContent = '—'; ne.style.color = ''; ce.textContent = '';
+    ne.textContent = '—'; ne.style.color = ''; ce.textContent = ''; he.textContent = '';
     return;
   }
   const nearest = Math.round(sm);
@@ -137,6 +137,7 @@ function updateReadout() {
                  : Math.abs(cents) < 50 ? '#9B6800'
                  :                        '#8B2020';
   ce.textContent = (cents >= 0 ? '+' : '') + cents.toFixed(0) + '¢';
+  he.textContent = ''; // Hz display omitted in main app for cleanliness
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -209,7 +210,7 @@ document.getElementById('directionS').onchange = function () {
 
 document.getElementById('bpmR').oninput = function () {
   bpm     = +this.value;
-  beatSec = 60 / bpm;   // updates shared var in theory.js
+  beatSec = 60 / bpm;
   document.getElementById('bpmV').textContent = bpm;
 };
 

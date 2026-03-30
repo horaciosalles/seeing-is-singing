@@ -121,8 +121,3 @@ function getChordNotes(key, clef) {
 function getDrillSequence(note1, note2) {
   return [note1, note2, note1, note2];
 }
-
-// ── Shared timing state ───────────────────────────────────────────────────────
-// Declared here (loaded first) so scheduler.js can read it safely.
-// Updated by state.js when BPM changes.
-let beatSec = 60 / 66;  // default 66 BPM

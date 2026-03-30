@@ -280,6 +280,12 @@ function processPitchFrame(currentGlobalPi) {
   }
 }
 
+// ── resetActiveStrategy ───────────────────────────────────────────────────────
+function resetActiveStrategy() {
+  const s = STRATEGIES[activeStrategy];
+  s.reset();
+}
+
 // ── onLoopBoundary / onSessionStart ──────────────────────────────────────────
 // Called by state.js at session start and (if ever looping) at loop boundaries.
 function onSessionStart() {

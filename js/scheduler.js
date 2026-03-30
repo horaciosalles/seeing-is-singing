@@ -59,7 +59,7 @@ function _schedTick() {
   while (nextBeat < actx.currentTime + LOOKAHEAD && schedIdx < TOTAL_BEATS) {
     _fireBeat(schedIdx, nextBeat);
     beatAudioTimes[schedIdx] = nextBeat;
-    nextBeat  += beatSec;   // beatSec declared in theory.js, updated by state.js
+    nextBeat  += beatSec;   // beatSec from state.js
     schedIdx++;
   }
   if (schedIdx >= TOTAL_BEATS) {

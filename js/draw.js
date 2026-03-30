@@ -26,7 +26,7 @@ function midiToY(mf) {
 //   local 4,5 → drillGeo.noteXs[2]  (measure 4, note 1)
 //   local 6,7 → drillGeo.noteXs[3]  (measure 4, note 2)
 function pitchTimeToX(t, gpi) {
-  if (!drillGeo || beatAudioTimes[gpi] === undefined) return null;
+  if (!drillGeo || !beatAudioTimes[gpi]) return null;
   const local = gpi - DRILL_START;       // 0–7
   if (local < 0) return null;
 
