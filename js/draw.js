@@ -43,6 +43,8 @@ function pitchTimeToX(t, gpi) {
   const x1 = drillGeo.noteXs[slot + 1] !== undefined
                ? drillGeo.noteXs[slot + 1]
                : drillGeo.right;
+  if (!Number.isFinite(x0) || !Number.isFinite(x1)) return null;
+  if (t1 <= t0) return x0;
 
   return x0 + (x1 - x0) * Math.min(1, Math.max(0, (t - t0) / (t1 - t0)));
 }
@@ -59,7 +61,7 @@ function drawFrame() {
   ctx2d.clearRect(0, 0, W, H);
   ctx2d.drawImage(noteBmp, 0, 0, W, H);
 
-  if (drillGeo && pitchState.buf.length > 1) {
+  if (drillGeo && pitchState.buf.length > 1 && drillGeo.right > drillGeo.left) {
     ctx2d.save();
     ctx2d.beginPath();
     ctx2d.rect(drillGeo.left, 0, drillGeo.right - drillGeo.left, H);
