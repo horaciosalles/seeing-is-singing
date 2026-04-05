@@ -87,6 +87,21 @@ function drawFrame() {
       }
     }
 
+    // Playback cursor — vertical line at current time
+    if (currentGlobalPi >= 0) {
+      const cursorX = pitchTimeToX(actx.currentTime, currentGlobalPi);
+      if (cursorX !== null) {
+        ctx2d.strokeStyle = 'rgba(220, 80, 0, 0.65)';
+        ctx2d.lineWidth = 1.5;
+        ctx2d.setLineDash([4, 3]);
+        ctx2d.beginPath();
+        ctx2d.moveTo(cursorX, drillGeo.topY - 8);
+        ctx2d.lineTo(cursorX, drillGeo.refY + 8);
+        ctx2d.stroke();
+        ctx2d.setLineDash([]);
+      }
+    }
+
     ctx2d.restore();
   }
 

@@ -6,7 +6,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
 
-const NOISE_GATE = 0.004;
+const NOISE_GATE = 0.012;
+const CLARITY_GATE = 0.055;
 
 // Working buffers
 const timeBuf = new Float32Array(4096);
@@ -53,7 +54,8 @@ function yinDetect(buf, sr, N, yinBuf, minHz, maxHz) {
   else { const a=yinBuf[x0],b=yinBuf[t],c=yinBuf[x2]; best = t+(c-a)/(2*(2*b-c-a)); }
 
   const hz = sr / best;
-  return (hz >= minHz && hz <= maxHz) ? hz : null;
+  const clarity = yinBuf[Math.floor(best)]; // CMNDF dip depth (0 = perfect, ~THR = weak)
+  return (hz >= minHz && hz <= maxHz) ? { hz, clarity } : null;
 }
 
 // ── HPS — frequency domain ────────────────────────────────────────────────────
@@ -103,8 +105,11 @@ function detectFundamental() {
   const { minHz, maxHz } = getDetectionRange();
 
   analyser1024.getFloatTimeDomainData(timeBuf);
-  const hzYin = yinDetect(timeBuf, sr, 1024, yinWork, minHz, maxHz);
+  const yinRes = yinDetect(timeBuf, sr, 1024, yinWork, minHz, maxHz);
   const hzHps = hpsDetect(sr, minHz, maxHz);
+
+  // Filter YIN by clarity (CMNDF confidence)
+  const hzYin = (yinRes !== null && yinRes.clarity <= CLARITY_GATE) ? yinRes.hz : null;
 
   if (hzYin === null && hzHps === null) return null;
   if (hzYin === null) return hzHps;
@@ -129,20 +134,24 @@ const GAP = { gap: true };
 // Single strategy — EMA α=0.08, ~200ms time constant at 60fps.
 // Silky on sustained notes, slightly lagged on fast changes.
 // Octave correction as secondary safety net after HPS reconciliation.
+// Onset debounce: require pitch to persist for MIN_ONSET_FRAMES before output.
 const pitchState = {
-  ema:     null,
-  recent:  [],
-  hold:    0,
-  wasNull: true,
-  buf:     [],
+  ema:            null,
+  recent:         [],
+  hold:           0,
+  wasNull:        true,
+  buf:            [],
+  onsetFrames:    0,
+  MIN_ONSET_FRAMES: 3,  // ~50ms at 60fps; suppress brief noise spikes
 
   reset() {
     this.ema = null; this.recent = []; this.hold = 0;
-    this.wasNull = true; this.buf = [];
+    this.wasNull = true; this.buf = []; this.onsetFrames = 0;
   },
 
   process(hz) {
     if (hz === null) {
+      this.onsetFrames = 0; // reset onset counter on silence
       if (this.hold > 0) { this.hold--; return this.ema; }
       return null;
     }
@@ -166,6 +175,11 @@ const pitchState = {
     if (this.recent.length > 8) this.recent.shift();
 
     this.ema = (this.ema === null) ? cor : 0.08 * cor + 0.92 * this.ema;
+
+    // Onset debounce: only output after MIN_ONSET_FRAMES of sustained pitch
+    this.onsetFrames++;
+    if (this.onsetFrames < this.MIN_ONSET_FRAMES) return null;
+
     return this.ema;
   },
 };
