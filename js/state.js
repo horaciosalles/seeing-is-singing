@@ -27,15 +27,21 @@ function setState(s) {
   const readyBtns   = document.getElementById('readyBtns');
   const stopBtn     = document.getElementById('stopBtn');
   const statusEl    = document.getElementById('statusMsg');
+  const controls    = ['keyS','clefS','intervalS','bpmR','btnTonic','btnSing']
+                       .map(id => document.getElementById(id))
+                       .filter(Boolean);
+
+  const disabled = s === 'METRO' || s === 'SINGING';
+  controls.forEach(el => { el.disabled = disabled; });
 
   readyBtns.classList.toggle('hidden', s !== 'READY' && s !== 'REVIEW');
   stopBtn.classList.toggle('hidden',   s !== 'METRO' && s !== 'SINGING');
 
   const msgs = {
     READY:   '',
-    METRO:   'Listen…',
-    SINGING: 'Sing',
-    REVIEW:  '',
+    METRO:   'Get ready — listen to the clicks.',
+    SINGING: 'Sing the tonic, then the interval.',
+    REVIEW:  'Review your pitch line above.',
   };
   if (statusEl) statusEl.textContent = msgs[s] || '';
 }

@@ -114,20 +114,31 @@ function rebuildNotation() {
   // ── Extract geometry — all logical pixels from VexFlow ───────────────────
   const sp = (botY - topY) / 4;
 
-  const getX = sn => {
+  const getX = (sn, fallback = 0) => {
     const bb = sn.getBoundingBox();
-    return bb ? bb.getX() + bb.getW() / 2 : 0;
+    return bb && Number.isFinite(bb.getX()) && Number.isFinite(bb.getW())
+         ? bb.getX() + bb.getW() / 2
+         : fallback;
   };
+
+  const noteX1 = getX(note1, mg + 20);
+  const noteX2 = getX(note2, m2X + 30);
+  const rightX = Math.max(noteX2 + 12, W - mg);
 
   drillGeo = {
     sp,
     refMidi: clefDef.refMidi,   // WRITTEN pitch at bottom staff line
     topY,
     refY:    botY,
-    noteXs:  [getX(note1), getX(note2)],
-    left:    getX(note1) - 10,
-    right:   m2X + m2W - mg,
+    noteXs:  [noteX1, noteX2],
+    left:    Math.max(0, noteX1 - 12),
+    right:   rightX,
   };
 
-  createImageBitmap(tmp).then(bmp => { noteBmp = bmp; drawFrame(); });
+  const emitBitmap = bmp => { noteBmp = bmp; drawFrame(); };
+  if (window.createImageBitmap) {
+    createImageBitmap(tmp).then(emitBitmap).catch(() => emitBitmap(tmp));
+  } else {
+    emitBitmap(tmp);
+  }
 }
