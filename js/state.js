@@ -1,11 +1,11 @@
 // ── state.js ──────────────────────────────────────────────────────────────────
-// @version 0.3
+// @version 0.4
 // App state machine, RAF loop, session control, all UI wiring.
 // States: READY → METRO → SINGING → REVIEW
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
 
-const VERSION = 'v0.3';
+const VERSION = 'v0.4';
 
 // Abbreviated interval labels parallel to INTERVALS in theory.js
 const INTERVAL_ABBRS  = ['m2','M2','m3','M3','P4','°5','P5','m6','M6','m7','M7','P8'];
@@ -14,8 +14,7 @@ const INTERVAL_SHORTS = ['min 2nd','maj 2nd','min 3rd','maj 3rd','perf 4th',
 
 // ── Shared mutable state ──────────────────────────────────────────────────────
 let curKey      = 'C';
-let curClef     = 'G8vb';
-let curInterval = 6;
+let curInterval = 6;   // index into INTERVALS
 let bpm         = 66;
 // beatSec declared in theory.js; updated here on BPM change
 
@@ -23,9 +22,8 @@ let bpm         = 66;
 function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('sightsing-v1') || '{}');
-    if (s.key)                { curKey      = s.key; }
-    if (s.clef)               { curClef     = s.clef; }
-    if (typeof s.bpm  === 'number') { bpm   = s.bpm; beatSec = 60 / bpm; }
+    if (s.key)                        { curKey      = s.key; }
+    if (typeof s.bpm      === 'number') { bpm        = s.bpm; beatSec = 60 / bpm; }
     if (typeof s.interval === 'number') { curInterval = s.interval; }
   } catch (_) { /* ignore */ }
 }
@@ -33,7 +31,7 @@ function loadSettings() {
 function saveSettings() {
   try {
     localStorage.setItem('sightsing-v1', JSON.stringify({
-      key: curKey, clef: curClef, bpm, interval: curInterval,
+      key: curKey, bpm, interval: curInterval,
     }));
   } catch (_) { /* ignore */ }
 }
@@ -53,7 +51,7 @@ function setState(s) {
 
   const locked = s === 'METRO' || s === 'SINGING';
 
-  ['keyS','clefS','bpmR','btnTonic','btnSing'].forEach(id => {
+  ['keyS','bpmR','btnTonic','btnSing'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = locked;
   });
@@ -62,7 +60,6 @@ function setState(s) {
   actionsWrap.classList.toggle('hidden', s !== 'READY' && s !== 'REVIEW');
   stopBtn.classList.toggle('hidden',     s !== 'METRO' && s !== 'SINGING');
 
-  // Beat dots: show only during metronome count-in
   beatRow.classList.toggle('visible', s === 'METRO');
   if (s !== 'METRO') {
     for (let i = 0; i < 4; i++) {
@@ -73,9 +70,9 @@ function setState(s) {
 
   const msgs = {
     READY:   '',
-    METRO:   'Get ready — listen to the clicks.',
-    SINGING: 'Sing the tonic, then the interval.',
-    REVIEW:  'Review your pitch line.',
+    METRO:   'Listen to the clicks — get ready.',
+    SINGING: 'Sing the root, then aim for the glow.',
+    REVIEW:  'Drill complete.',
   };
   if (statusEl) statusEl.textContent = msgs[s] || '';
 }
@@ -96,13 +93,20 @@ function rafLoop() {
 
     if (b.kind === 'metro') {
       singing = false;
-      _flashBeatDot(b.beat);      // b.beat is 0–3 for metro events
+      _flashBeatDot(b.beat);
       if (appState !== 'METRO') setState('METRO');
 
     } else if (b.kind === 'note-onset') {
       singing         = true;
       currentGlobalPi = b.globalPi;
       if (appState !== 'SINGING') setState('SINGING');
+      // Update status hint based on which note we're singing
+      const statusEl = document.getElementById('statusMsg');
+      if (statusEl) {
+        statusEl.textContent = currentGlobalPi === 4
+          ? 'Sing the root — hold steady at 12:00.'
+          : 'Now sing the interval — aim for the glow.';
+      }
 
     } else if (b.kind === 'drill-tick') {
       singing = true;
@@ -114,20 +118,26 @@ function rafLoop() {
     updateReadout();
   }
 
-  drawFrame();
+  // Target: always show the selected interval (hand sweeps toward it on
+  // interval phase; sits at root during tonic phase as a natural baseline)
+  drawClockFrame({
+    state:           appState,
+    targetSemitones: INTERVALS[curInterval].semitones,
+  });
 }
 
 function _flashBeatDot(i) {
   const dot = document.getElementById('bd' + i);
   if (!dot) return;
   dot.classList.remove('pop');
-  void dot.offsetWidth;   // force reflow to restart animation
+  void dot.offsetWidth;
   dot.classList.add('pop');
 }
 
 // ── Session ────────────────────────────────────────────────────────────────────
 function enterSession() {
   resetPitch();
+  resetClockAngle();
   singing         = false;
   currentGlobalPi = -1;
   beatSec         = 60 / bpm;
@@ -141,7 +151,11 @@ function onDrillComplete() {
   singing = false;
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   setState('REVIEW');
-  drawFrame();
+  // Draw one final frame with the frozen hand position
+  drawClockFrame({
+    state:           'REVIEW',
+    targetSemitones: INTERVALS[curInterval].semitones,
+  });
 }
 
 function stopSession() {
@@ -150,7 +164,10 @@ function stopSession() {
   if (actx && actx.state === 'suspended') actx.resume();
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   setState('REVIEW');
-  drawFrame();
+  drawClockFrame({
+    state:           'REVIEW',
+    targetSemitones: INTERVALS[curInterval].semitones,
+  });
 }
 
 // ── Readout ────────────────────────────────────────────────────────────────────
@@ -161,9 +178,9 @@ function updateReadout() {
   if (!ne || !ce) return;
   if (!p) { ne.textContent = '—'; ne.style.color = ''; ce.textContent = ''; return; }
   ne.textContent = p.noteName;
-  ne.style.color = Math.abs(p.cents) < 25 ? '#1A6638'
-                 : Math.abs(p.cents) < 50 ? '#9B6800'
-                 :                           '#8B2020';
+  ne.style.color = Math.abs(p.cents) < 25 ? '#5ee87a'   // mint — in tune
+                 : Math.abs(p.cents) < 50 ? '#ffd166'   // yellow — close
+                 :                           '#f472b6';  // pink — off
   ce.textContent = (p.cents >= 0 ? '+' : '') + p.cents.toFixed(0) + '¢';
 }
 
@@ -186,7 +203,11 @@ function buildIntervalGrid() {
       grid.querySelectorAll('.iv-tile').forEach(t => t.classList.remove('selected'));
       tile.classList.add('selected');
       resetPitch();
-      rebuildNotation();
+      // Redraw clock with new target (hand stays at current position)
+      drawClockFrame({
+        state:           appState,
+        targetSemitones: INTERVALS[curInterval].semitones,
+      });
     });
     grid.appendChild(tile);
   });
@@ -206,8 +227,8 @@ document.getElementById('howBtn').addEventListener('click', () => {
   const el      = document.getElementById('ovSteps');
   const btn     = document.getElementById('howBtn');
   const showing = el.style.display !== 'none';
-  el.style.display  = showing ? 'none' : 'flex';
-  btn.textContent   = showing ? 'How does it work ↓' : 'How does it work ↑';
+  el.style.display = showing ? 'none' : 'flex';
+  btn.textContent  = showing ? 'How does it work ↓' : 'How does it work ↑';
 });
 
 // ── UI wiring ─────────────────────────────────────────────────────────────────
@@ -216,6 +237,11 @@ document.getElementById('grantBtn').addEventListener('click', async () => {
   if (ok) {
     document.getElementById('ov').classList.add('gone');
     setState('READY');
+    // Draw initial clock after overlay is hidden
+    drawClockFrame({
+      state:           'READY',
+      targetSemitones: INTERVALS[curInterval].semitones,
+    });
   } else {
     const e = document.getElementById('ovErr');
     e.style.display = 'block';
@@ -230,7 +256,7 @@ document.getElementById('btnSing').addEventListener('click', () => {
 });
 
 document.getElementById('btnTonic').addEventListener('click', () => {
-  playTonic(curKey, curClef);
+  playTonic(curKey);
 });
 
 document.getElementById('stopBtn').addEventListener('click', stopSession);
@@ -238,15 +264,15 @@ document.getElementById('stopBtn').addEventListener('click', stopSession);
 document.getElementById('keyS').addEventListener('change', function () {
   curKey = this.value;
   saveSettings();
-  if (appState === 'METRO' || appState === 'SINGING') stopSession();
-  else { resetPitch(); rebuildNotation(); }
-});
-
-document.getElementById('clefS').addEventListener('change', function () {
-  curClef = this.value;
-  saveSettings();
-  if (appState === 'METRO' || appState === 'SINGING') stopSession();
-  else { resetPitch(); rebuildNotation(); }
+  if (appState === 'METRO' || appState === 'SINGING') {
+    stopSession();
+  } else {
+    resetPitch();
+    drawClockFrame({
+      state:           appState,
+      targetSemitones: INTERVALS[curInterval].semitones,
+    });
+  }
 });
 
 document.getElementById('bpmR').addEventListener('input', function () {
@@ -266,11 +292,15 @@ document.addEventListener('DOMContentLoaded', () => {
 loadSettings();
 buildIntervalGrid();
 
-// Sync UI controls to loaded/default values
 document.getElementById('keyS').value  = curKey;
-document.getElementById('clefS').value = curClef;
 document.getElementById('bpmR').value  = bpm;
 document.getElementById('bpmV').textContent = bpm;
 
-initNotation();
-requestAnimationFrame(() => requestAnimationFrame(() => rebuildNotation()));
+// Boot the clock — double-RAF ensures ResizeObserver has fired first
+initClock();
+requestAnimationFrame(() => requestAnimationFrame(() => {
+  drawClockFrame({
+    state:           'READY',
+    targetSemitones: INTERVALS[curInterval].semitones,
+  });
+}));

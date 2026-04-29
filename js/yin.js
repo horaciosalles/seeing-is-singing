@@ -2,7 +2,7 @@
 // @version 0.2
 // Pitch detection: HPS + YIN hybrid detector, single smooth filter strategy.
 // Depends on: audio.js (actx, analyser1024)
-//             theory.js (hz2midi, CLEF_DEFS, curClef)
+//             theory.js (hz2midi)
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
 
@@ -14,12 +14,10 @@ const timeBuf = new Float32Array(4096);
 const freqBuf = new Float32Array(2048);
 const yinWork = new Float32Array(512);
 
-// ── Detection range (clef-aware) ──────────────────────────────────────────────
-// Constrains pitch search to the singer's actual sounding voice range.
-// curClef is set by state.js.
+// ── Detection range ────────────────────────────────────────────────────────────
+// Wide range covering soprano through bass (HPF at 80Hz is the lower bound).
 function getDetectionRange() {
-  const def = CLEF_DEFS[curClef];
-  return def ? def.detectionRange : { minHz: 80, maxHz: 1100 };
+  return { minHz: 80, maxHz: 1100 };
 }
 
 // ── YIN — time domain ─────────────────────────────────────────────────────────

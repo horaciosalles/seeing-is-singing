@@ -4,25 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>SightSing</title>
-<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
 <link rel="stylesheet" href="css/main.css">
 </head>
 <body data-state="READY">
 
-<div class="version-badge" id="versionBadge">v0.3</div>
+<div class="version-badge" id="versionBadge">v0.4</div>
 
 <!-- Mic permission overlay -->
 <div class="ov" id="ov">
   <div class="ov-card">
     <h1 class="ov-logo">Sight<em>Sing</em></h1>
-    <p class="ov-tagline">Interval sight-singing with real-time pitch feedback.</p>
+    <p class="ov-tagline">Interval training with a real-time pitch clock.</p>
     <button class="ov-start" id="grantBtn">Start — allow microphone</button>
     <button class="ov-how-btn" id="howBtn">How does it work ↓</button>
     <ol class="ov-steps" id="ovSteps" style="display:none">
       <li>Choose an interval from the grid below</li>
-      <li>Press <strong>Tonic</strong> to hear the root note (optional)</li>
-      <li>Press <strong>Sing!</strong> — 4 clicks, then sing</li>
-      <li>Measure 1: sing the tonic &nbsp;·&nbsp; Measure 2: sing the interval</li>
+      <li>Press <strong>Tonic</strong> to hear the root note</li>
+      <li>Press <strong>Sing!</strong> — 4 clicks count you in</li>
+      <li>Sing the root, then move toward the glowing marker</li>
     </ol>
     <p class="ov-err" id="ovErr" style="display:none"></p>
   </div>
@@ -49,14 +48,6 @@
       </select>
     </div>
     <div class="setting-row">
-      <label class="setting-lbl" for="clefS">Clef</label>
-      <select id="clefS">
-        <option value="G">Treble</option>
-        <option value="G8vb">Tenor</option>
-        <option value="F">Bass</option>
-      </select>
-    </div>
-    <div class="setting-row">
       <label class="setting-lbl" for="bpmR">♩ =</label>
       <input type="range" id="bpmR" min="40" max="100" value="66">
       <span class="bpm-num" id="bpmV">66</span>
@@ -67,17 +58,17 @@
 <!-- Main content -->
 <main class="main">
 
-  <!-- Staff — hero element -->
-  <div class="staff-wrap">
-    <div class="staff-card">
-      <canvas id="mainCanvas" height="240"></canvas>
-    </div>
-    <div class="beat-row" id="beatRow">
-      <span class="beat-dot" id="bd0"></span>
-      <span class="beat-dot" id="bd1"></span>
-      <span class="beat-dot" id="bd2"></span>
-      <span class="beat-dot" id="bd3"></span>
-    </div>
+  <!-- Clock hero -->
+  <div class="clock-wrap">
+    <canvas id="clockCanvas"></canvas>
+  </div>
+
+  <!-- Beat dots (count-in only) -->
+  <div class="beat-row" id="beatRow">
+    <span class="beat-dot" id="bd0"></span>
+    <span class="beat-dot" id="bd1"></span>
+    <span class="beat-dot" id="bd2"></span>
+    <span class="beat-dot" id="bd3"></span>
   </div>
 
   <!-- Live pitch readout -->
@@ -105,12 +96,12 @@
 
 <!--
   Script load order (no bundler — order = dependency graph):
-    theory.js    → defines beatSec, NOTE_NAMES, CLEF_DEFS, INTERVALS, helpers
-    audio.js     → initMic, metroClick, playTonic, pianoTone
+    theory.js    → NOTE_NAMES, hz2midi, KEY_ROOT, INTERVALS, beatSec
+    audio.js     → initMic, metroClick, playTonic
     yin.js       → detectFundamental, pitchState, processPitchFrame, getLatestPitch
-    scheduler.js → startScheduler, stopScheduler, beatAudioTimes, vBeatQueue
-    notation.js  → canvas, ctx2d, drillGeo, noteBmp, rebuildNotation, initNotation
-    draw.js      → drawFrame, midiToY, pitchTimeToX
+    scheduler.js → startScheduler, stopScheduler, vBeatQueue
+    notation.js  → stubs: initNotation, rebuildNotation
+    draw.js      → clock renderer: initClock, resetClockAngle, drawClockFrame
     state.js     → app state machine, UI wiring, boot
 -->
 <script src="js/theory.js"></script>
