@@ -90,18 +90,13 @@ function _updateAngle(state) {
   if (state === 'SINGING') {
     const midi = _latestMidi();
     if (midi !== null) {
-      const raw = (midi - KEY_ROOT[curKey]) * 30; // degrees, + = clockwise
+      const raw = (midi - rootMidi) * 30; // degrees, + = clockwise
       _displayAngle += (raw - _displayAngle) * 0.15;
-      return;
     }
-    // Silence during SINGING — hold position (hand stays, no drift)
+    // Silence during SINGING: hold position, no drift
     return;
   }
-  if (state === 'METRO') {
-    // Gently drift to 12:00 during count-in
-    _displayAngle += (0 - _displayAngle) * 0.06;
-  }
-  // READY / REVIEW: no update (static display)
+  // READY: no update (static display)
 }
 
 // ── Main rendering ────────────────────────────────────────────────────────────
@@ -166,6 +161,48 @@ function _render(state, targetSemitones) {
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
+  }
+
+  // 3.5 Neon arc — lights up the segment the singer is currently landing on ────
+  {
+    const midi = _latestMidi();
+    if (state === 'SINGING' && midi !== null) {
+      const semOffset = midi - rootMidi;
+      const rounded   = Math.round(semOffset);
+      const centsOff  = Math.abs(semOffset - rounded) * 100; // 0–50 ¢
+      const semiClass = ((rounded % 12) + 12) % 12;
+      // Quadratic fade: full intensity at 0 ¢, zero at 35 ¢
+      const intensity = Math.max(0, 1 - (centsOff / 35) ** 2);
+
+      if (intensity > 0.04) {
+        const color = SEMITONE_COLORS[semiClass];
+        const a0    = ((semiClass - 0.5) / 12) * Math.PI * 2 - Math.PI / 2 + arcGap;
+        const a1    = ((semiClass + 0.5) / 12) * Math.PI * 2 - Math.PI / 2 - arcGap;
+
+        ctx.save();
+
+        // Glowing fill
+        ctx.shadowColor = color;
+        ctx.shadowBlur  = 32 * intensity;
+        ctx.beginPath();
+        ctx.arc(cx, cy, segOuter, a0, a1);
+        ctx.arc(cx, cy, segInner, a1, a0, true);
+        ctx.closePath();
+        const alpha = Math.round(0xee * intensity).toString(16).padStart(2, '0');
+        ctx.fillStyle = color + alpha;
+        ctx.fill();
+
+        // Neon tube — bright white stroke on outer and inner arc edges
+        ctx.shadowBlur  = 18 * intensity;
+        ctx.strokeStyle = `rgba(255,255,255,${0.95 * intensity})`;
+        ctx.lineWidth   = 2.5;
+        ctx.beginPath(); ctx.arc(cx, cy, segOuter - 2, a0, a1); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, segInner + 2, a1, a0, true); ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+    }
   }
 
   // 4. Tick marks and interval labels ──────────────────────────────────────────

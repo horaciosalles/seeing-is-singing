@@ -17,10 +17,6 @@ const moct    = m  => Math.floor(m / 12) - 1;
 // Updated by state.js whenever BPM changes.
 let beatSec = 60 / 66;
 
-// ── Key data ──────────────────────────────────────────────────────────────────
-// Full MIDI note values for the root in each key (treble-range sounding pitch).
-const KEY_ROOT = { C:60, G:67, D:62, A:69, F:65, Bb:70 };
-
 // ── Intervals ─────────────────────────────────────────────────────────────────
 const INTERVALS = [
   { name: 'Minor 2nd',   semitones: 1  },

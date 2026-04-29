@@ -8,20 +8,20 @@
 </head>
 <body data-state="READY">
 
-<div class="version-badge" id="versionBadge">v0.4</div>
+<div class="version-badge" id="versionBadge">v0.5</div>
 
 <!-- Mic permission overlay -->
 <div class="ov" id="ov">
   <div class="ov-card">
     <h1 class="ov-logo">Sight<em>Sing</em></h1>
-    <p class="ov-tagline">Interval training with a real-time pitch clock.</p>
+    <p class="ov-tagline">Interval ear training with a real-time pitch clock.</p>
     <button class="ov-start" id="grantBtn">Start — allow microphone</button>
     <button class="ov-how-btn" id="howBtn">How does it work ↓</button>
     <ol class="ov-steps" id="ovSteps" style="display:none">
-      <li>Choose an interval from the grid below</li>
-      <li>Press <strong>Tonic</strong> to hear the root note</li>
-      <li>Press <strong>Sing!</strong> — 4 clicks count you in</li>
-      <li>Sing the root, then move toward the glowing marker</li>
+      <li>Set the root note (default C4) and choose an interval</li>
+      <li>Press <strong>Tonic</strong> or <strong>Target</strong> to hear reference pitches</li>
+      <li>Press <strong>Sing!</strong> and sing freely — watch the clock hand</li>
+      <li>Aim for the glowing marker; the arc lights up when you lock in</li>
     </ol>
     <p class="ov-err" id="ovErr" style="display:none"></p>
   </div>
@@ -30,30 +30,7 @@
 <!-- Header -->
 <header class="hdr">
   <span class="logo">Sight<em>Sing</em></span>
-  <button class="gear-btn" id="gearBtn" aria-label="Settings" title="Settings">⚙</button>
 </header>
-
-<!-- Settings drawer -->
-<div class="settings-drawer" id="settingsDrawer" aria-hidden="true">
-  <div class="settings-inner">
-    <div class="setting-row">
-      <label class="setting-lbl" for="keyS">Key</label>
-      <select id="keyS">
-        <option value="C">C</option>
-        <option value="G">G</option>
-        <option value="F">F</option>
-        <option value="D">D</option>
-        <option value="Bb">B♭</option>
-        <option value="A">A</option>
-      </select>
-    </div>
-    <div class="setting-row">
-      <label class="setting-lbl" for="bpmR">♩ =</label>
-      <input type="range" id="bpmR" min="40" max="100" value="66">
-      <span class="bpm-num" id="bpmV">66</span>
-    </div>
-  </div>
-</div>
 
 <!-- Main content -->
 <main class="main">
@@ -63,27 +40,40 @@
     <canvas id="clockCanvas"></canvas>
   </div>
 
-  <!-- Beat dots (count-in only) -->
-  <div class="beat-row" id="beatRow">
-    <span class="beat-dot" id="bd0"></span>
-    <span class="beat-dot" id="bd1"></span>
-    <span class="beat-dot" id="bd2"></span>
-    <span class="beat-dot" id="bd3"></span>
-  </div>
-
-  <!-- Live pitch readout -->
+  <!-- Root selector + live pitch readout (same row) -->
   <div class="readout">
+    <div class="root-selectors">
+      <select id="rootNoteS" class="root-sel">
+        <option value="0">C</option>
+        <option value="1">C♯</option>
+        <option value="2">D</option>
+        <option value="3">D♯</option>
+        <option value="4">E</option>
+        <option value="5">F</option>
+        <option value="6">F♯</option>
+        <option value="7">G</option>
+        <option value="8">G♯</option>
+        <option value="9">A</option>
+        <option value="10">A♯</option>
+        <option value="11">B</option>
+      </select>
+      <select id="rootOctS" class="root-sel root-sel-oct">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4" selected>4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+      </select>
+    </div>
     <span class="readout-note" id="readoutNote">—</span>
     <span class="readout-cents" id="readoutCents"></span>
   </div>
 
-  <!-- Status line -->
-  <p class="status-msg" id="statusMsg"></p>
-
   <!-- Interval grid -->
   <div class="iv-grid" id="intervalGrid"></div>
 
-  <!-- READY / REVIEW state actions -->
+  <!-- READY state actions -->
   <div class="actions" id="actionsWrap">
     <div class="btn-side-group">
       <button class="btn-tonic"  id="btnTonic">Tonic</button>
@@ -92,25 +82,14 @@
     <button class="btn-sing" id="btnSing">Sing!</button>
   </div>
 
-  <!-- METRO / SINGING state -->
+  <!-- SINGING state -->
   <button class="btn-stop hidden" id="stopBtn">■ Stop</button>
 
 </main>
 
-<!--
-  Script load order (no bundler — order = dependency graph):
-    theory.js    → NOTE_NAMES, hz2midi, KEY_ROOT, INTERVALS, beatSec
-    audio.js     → initMic, metroClick, playTonic
-    yin.js       → detectFundamental, pitchState, processPitchFrame, getLatestPitch
-    scheduler.js → startScheduler, stopScheduler, vBeatQueue
-    notation.js  → stubs: initNotation, rebuildNotation
-    draw.js      → clock renderer: initClock, resetClockAngle, drawClockFrame
-    state.js     → app state machine, UI wiring, boot
--->
 <script src="js/theory.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/yin.js"></script>
-<script src="js/scheduler.js"></script>
 <script src="js/notation.js"></script>
 <script src="js/draw.js"></script>
 <script src="js/state.js"></script>
