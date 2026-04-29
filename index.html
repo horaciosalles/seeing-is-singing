@@ -7,33 +7,38 @@
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
 <link rel="stylesheet" href="css/main.css">
 </head>
-<body>
+<body data-state="READY">
 
-<!-- Version badge — always visible bottom-right -->
-<div class="version-badge" id="versionBadge">v0.2</div>
+<div class="version-badge" id="versionBadge">v0.3</div>
 
 <!-- Mic permission overlay -->
 <div class="ov" id="ov">
-  <div class="ov-title">Sight<em>Sing</em></div>
-  <div class="ov-body">Interval sight-singing with real-time pitch feedback.</div>
-  <div class="ov-note">
-    How it works:<br>
-    1 · Choose your interval below<br>
-    2 · Press <strong>Tonic</strong> to hear the root note<br>
-    3 · Press <strong>Sing!</strong> — 4 clicks, then sing<br>
-    4 · Measure 1: sing the tonic &nbsp;|&nbsp; Measure 2: sing the interval<br>
-    5 · Watch the blue line land on each note
+  <div class="ov-card">
+    <h1 class="ov-logo">Sight<em>Sing</em></h1>
+    <p class="ov-tagline">Interval sight-singing with real-time pitch feedback.</p>
+    <button class="ov-start" id="grantBtn">Start — allow microphone</button>
+    <button class="ov-how-btn" id="howBtn">How does it work ↓</button>
+    <ol class="ov-steps" id="ovSteps" style="display:none">
+      <li>Choose an interval from the grid below</li>
+      <li>Press <strong>Tonic</strong> to hear the root note (optional)</li>
+      <li>Press <strong>Sing!</strong> — 4 clicks, then sing</li>
+      <li>Measure 1: sing the tonic &nbsp;·&nbsp; Measure 2: sing the interval</li>
+    </ol>
+    <p class="ov-err" id="ovErr" style="display:none"></p>
   </div>
-  <button class="ov-btn" id="grantBtn">Allow microphone</button>
-  <div class="ov-err" id="ovErr"></div>
 </div>
 
 <!-- Header -->
-<div class="hdr">
+<header class="hdr">
   <span class="logo">Sight<em>Sing</em></span>
-  <div class="hdr-r">
-    <div class="ctrl">
-      <span class="clbl">Key</span>
+  <button class="gear-btn" id="gearBtn" aria-label="Settings" title="Settings">⚙</button>
+</header>
+
+<!-- Settings drawer -->
+<div class="settings-drawer" id="settingsDrawer" aria-hidden="true">
+  <div class="settings-inner">
+    <div class="setting-row">
+      <label class="setting-lbl" for="keyS">Key</label>
       <select id="keyS">
         <option value="C">C</option>
         <option value="G">G</option>
@@ -43,57 +48,60 @@
         <option value="A">A</option>
       </select>
     </div>
-    <div class="ctrl">
-      <span class="clbl">Clef</span>
+    <div class="setting-row">
+      <label class="setting-lbl" for="clefS">Clef</label>
       <select id="clefS">
         <option value="G">Treble</option>
-        <option value="G8vb" selected>Tenor</option>
+        <option value="G8vb">Tenor</option>
         <option value="F">Bass</option>
       </select>
     </div>
-    <div class="ctrl">
-      <span class="clbl">♩=</span>
+    <div class="setting-row">
+      <label class="setting-lbl" for="bpmR">♩ =</label>
       <input type="range" id="bpmR" min="40" max="100" value="66">
-      <span class="num" id="bpmV">66</span>
+      <span class="bpm-num" id="bpmV">66</span>
     </div>
   </div>
 </div>
 
 <!-- Main content -->
-<div class="main">
+<main class="main">
 
-  <!-- Interval selector -->
-  <div class="interval-row">
-    <span class="interval-label">Interval</span>
-    <select id="intervalS">
-      <!-- populated by state.js from INTERVALS -->
-    </select>
-  </div>
-
-  <!-- Staff — single canvas -->
-  <div class="staff-card">
-    <canvas id="mainCanvas" height="240"></canvas>
+  <!-- Staff — hero element -->
+  <div class="staff-wrap">
+    <div class="staff-card">
+      <canvas id="mainCanvas" height="240"></canvas>
+    </div>
+    <div class="beat-row" id="beatRow">
+      <span class="beat-dot" id="bd0"></span>
+      <span class="beat-dot" id="bd1"></span>
+      <span class="beat-dot" id="bd2"></span>
+      <span class="beat-dot" id="bd3"></span>
+    </div>
   </div>
 
   <!-- Live pitch readout -->
-  <div class="readout-row">
+  <div class="readout">
     <span class="readout-note" id="readoutNote">—</span>
     <span class="readout-cents" id="readoutCents"></span>
   </div>
 
   <!-- Status line -->
-  <div class="status-msg" id="statusMsg"></div>
+  <p class="status-msg" id="statusMsg"></p>
 
-  <!-- READY / REVIEW state: Tonic + Sing! -->
-  <div class="ready-btns" id="readyBtns">
+  <!-- Interval grid -->
+  <div class="iv-grid" id="intervalGrid"></div>
+
+  <!-- READY / REVIEW state actions -->
+  <div class="actions" id="actionsWrap">
     <button class="btn-tonic" id="btnTonic">Tonic</button>
     <button class="btn-sing"  id="btnSing">Sing!</button>
   </div>
 
-  <!-- METRO / SINGING state: Stop -->
+  <!-- METRO / SINGING state -->
   <button class="btn-stop hidden" id="stopBtn">■ Stop</button>
 
-</div>
+</main>
 
 <!--
   Script load order (no bundler — order = dependency graph):
