@@ -84,14 +84,14 @@ function _latestMidi() {
 }
 
 // EMA-smooth _displayAngle toward the pitch-derived target angle.
-// α = 0.15 → ~100 ms additional lag on top of yin.js's ~200 ms = ~300 ms total.
-// This makes the hand feel physically weighted without being sluggish.
+// α = 0.07 → ~240 ms additional lag on top of yin.js's ~200 ms = ~440 ms total.
+// Lower α kills micro-jitter; lag is acceptable for slow sustained singing.
 function _updateAngle(state) {
   if (state === 'SINGING') {
     const midi = _latestMidi();
     if (midi !== null) {
       const raw = (midi - rootMidi) * 30; // degrees, + = clockwise
-      _displayAngle += (raw - _displayAngle) * 0.15;
+      _displayAngle += (raw - _displayAngle) * 0.07;
     }
     // Silence during SINGING: hold position, no drift
     return;
