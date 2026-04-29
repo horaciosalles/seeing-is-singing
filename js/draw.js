@@ -137,9 +137,11 @@ function _render(state, targetSemitones) {
   const segInner = R * 0.770;
   const arcGap   = 0.022; // radians gap between segments
 
+  // Each segment is centered on its tick mark (±15° = ±0.5 semitone positions).
+  // This makes labels appear in the middle of their colored zone, like clock hours.
   for (let i = 0; i < 12; i++) {
-    const a0 = (i / 12) * Math.PI * 2 - Math.PI / 2 + arcGap;
-    const a1 = ((i + 1) / 12) * Math.PI * 2 - Math.PI / 2 - arcGap;
+    const a0 = ((i - 0.5) / 12) * Math.PI * 2 - Math.PI / 2 + arcGap;
+    const a1 = ((i + 0.5) / 12) * Math.PI * 2 - Math.PI / 2 - arcGap;
     ctx.beginPath();
     ctx.arc(cx, cy, segOuter, a0, a1);
     ctx.arc(cx, cy, segInner, a1, a0, true);
@@ -151,8 +153,8 @@ function _render(state, targetSemitones) {
   // 3. Target segment (glowing) ────────────────────────────────────────────────
   const tIdx = ((Math.round(targetSemitones) % 12) + 12) % 12;
   {
-    const a0 = (tIdx / 12) * Math.PI * 2 - Math.PI / 2 + arcGap;
-    const a1 = ((tIdx + 1) / 12) * Math.PI * 2 - Math.PI / 2 - arcGap;
+    const a0 = ((tIdx - 0.5) / 12) * Math.PI * 2 - Math.PI / 2 + arcGap;
+    const a1 = ((tIdx + 0.5) / 12) * Math.PI * 2 - Math.PI / 2 - arcGap;
     ctx.save();
     ctx.shadowColor = SEMITONE_COLORS[tIdx];
     ctx.shadowBlur  = 24;

@@ -310,28 +310,40 @@ body[data-state="SINGING"] .readout-cents { font-size: 1.1rem; }
 .iv-grid.locked { opacity: .32; pointer-events: none; }
 
 /* ── ACTIONS ── */
-.actions { width: 100%; display: flex; gap: 10px; }
+.actions {
+  width: 100%; display: flex; gap: 10px;
+  align-items: stretch; /* Sing! stretches to full height of side column */
+}
 
-.btn-tonic {
-  flex: 1; padding: 14px 0;
+/* Left column: Tonic on top, Target below */
+.btn-side-group {
+  flex: 1; display: flex; flex-direction: column; gap: 7px;
+}
+
+.btn-tonic,
+.btn-target {
+  flex: 1; padding: 11px 0;
   background: transparent; color: var(--muted);
   border: 1.5px solid var(--bord); border-radius: var(--r);
   font-family: 'Inter', sans-serif;
-  font-size: .9rem; font-style: italic;
+  font-size: .82rem; font-style: italic;
   cursor: pointer; touch-action: manipulation;
   -webkit-tap-highlight-color: transparent; user-select: none;
   transition: color .1s, border-color .1s, background .1s, transform .06s;
 }
-.btn-tonic:hover    { color: var(--text); border-color: var(--bord2); background: var(--surf2); }
-.btn-tonic:active   { transform: scale(.97); }
-.btn-tonic:disabled { opacity: .28; cursor: default; pointer-events: none; }
+.btn-tonic:hover,
+.btn-target:hover  { color: var(--text); border-color: var(--bord2); background: var(--surf2); }
+.btn-tonic:active,
+.btn-target:active { transform: scale(.96); }
+.btn-tonic:disabled,
+.btn-target:disabled { opacity: .28; cursor: default; pointer-events: none; }
 
 .btn-sing {
-  flex: 3; padding: 14px 0;
+  flex: 2.6; padding: 0;  /* height comes from align-items:stretch */
   background: var(--accent); color: #fff;
   border: none; border-radius: var(--r);
   font-family: 'Inter', sans-serif;
-  font-size: 1.05rem; font-weight: 700; letter-spacing: .03em;
+  font-size: 1.1rem; font-weight: 700; letter-spacing: .03em;
   cursor: pointer; touch-action: manipulation;
   -webkit-tap-highlight-color: transparent; user-select: none;
   transition: opacity .1s, transform .06s;

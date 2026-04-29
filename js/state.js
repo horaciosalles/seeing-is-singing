@@ -51,7 +51,7 @@ function setState(s) {
 
   const locked = s === 'METRO' || s === 'SINGING';
 
-  ['keyS','bpmR','btnTonic','btnSing'].forEach(id => {
+  ['keyS','bpmR','btnTonic','btnTarget','btnSing'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = locked;
   });
@@ -257,6 +257,10 @@ document.getElementById('btnSing').addEventListener('click', () => {
 
 document.getElementById('btnTonic').addEventListener('click', () => {
   playTonic(curKey);
+});
+
+document.getElementById('btnTarget').addEventListener('click', () => {
+  playNote(KEY_ROOT[curKey] + INTERVALS[curInterval].semitones);
 });
 
 document.getElementById('stopBtn').addEventListener('click', stopSession);

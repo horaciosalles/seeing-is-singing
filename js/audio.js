@@ -71,15 +71,14 @@ function metroClick(t, beat) {
   src.start(t); src.stop(t + 0.05);
 }
 
-// ── Tonic playback ────────────────────────────────────────────────────────────
-// Plays the root note for the selected key. Additive piano-like synthesis.
-function playTonic(key) {
+// ── Note playback ─────────────────────────────────────────────────────────────
+// Additive piano-like synthesis for any MIDI pitch (~2 sec duration).
+function playNote(midi) {
   if (!actx) return;
   if (actx.state === 'suspended') actx.resume();
-  const midi = KEY_ROOT[key];
-  const hz   = midi2hz(midi);
-  const t    = actx.currentTime;
-  const dur  = 2.0;
+  const hz  = midi2hz(midi);
+  const t   = actx.currentTime;
+  const dur = 2.0;
 
   [1, 2, 3, 4].forEach((h, i) => {
     const hv = [1, 0.4, 0.15, 0.06][i];
@@ -95,3 +94,5 @@ function playTonic(key) {
     o.start(t); o.stop(t + dur + 0.05);
   });
 }
+
+function playTonic(key) { playNote(KEY_ROOT[key]); }
