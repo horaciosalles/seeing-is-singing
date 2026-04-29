@@ -22,7 +22,13 @@ function _updateRootMidi() {
 }
 
 // ── Interval state ────────────────────────────────────────────────────────────
-let curInterval = 6; // index into INTERVALS
+let curInterval  = 6;    // index into INTERVALS
+let curDirection = 'asc'; // 'asc' | 'desc'
+
+function _effectiveSemitones() {
+  const s = INTERVALS[curInterval].semitones;
+  return curDirection === 'desc' ? -s : s;
+}
 
 // ── localStorage ─────────────────────────────────────────────────────────────
 function loadSettings() {
@@ -30,7 +36,8 @@ function loadSettings() {
     const s = JSON.parse(localStorage.getItem('sightsing-v2') || '{}');
     if (typeof s.rootNote   === 'number') rootNote   = s.rootNote;
     if (typeof s.rootOctave === 'number') rootOctave = s.rootOctave;
-    if (typeof s.interval   === 'number') curInterval = s.interval;
+    if (typeof s.interval   === 'number') curInterval  = s.interval;
+    if (typeof s.direction  === 'string') curDirection = s.direction;
     _updateRootMidi();
   } catch (_) {}
 }
@@ -38,7 +45,7 @@ function loadSettings() {
 function saveSettings() {
   try {
     localStorage.setItem('sightsing-v2', JSON.stringify({
-      rootNote, rootOctave, interval: curInterval,
+      rootNote, rootOctave, interval: curInterval, direction: curDirection,
     }));
   } catch (_) {}
 }
@@ -55,7 +62,7 @@ function setState(s) {
   const ivGrid      = document.getElementById('intervalGrid');
   const locked      = s === 'SINGING';
 
-  ['rootNoteS','rootOctS','btnTonic','btnTarget','btnSing'].forEach(id => {
+  ['rootNoteS','rootOctS','dirS','btnSing'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = locked;
   });
@@ -76,7 +83,7 @@ function rafLoop() {
   updateReadout();
   drawClockFrame({
     state:           'SINGING',
-    targetSemitones: INTERVALS[curInterval].semitones,
+    targetSemitones: _effectiveSemitones(),
   });
 }
 
@@ -93,7 +100,7 @@ function stopSession() {
   setState('READY');
   drawClockFrame({
     state:           'READY',
-    targetSemitones: INTERVALS[curInterval].semitones,
+    targetSemitones: _effectiveSemitones(),
   });
 }
 
@@ -135,7 +142,7 @@ function buildIntervalGrid() {
       resetPitch();
       drawClockFrame({
         state:           appState,
-        targetSemitones: INTERVALS[curInterval].semitones,
+        targetSemitones: _effectiveSemitones(),
       });
     });
     grid.appendChild(tile);
@@ -188,12 +195,10 @@ document.getElementById('btnSing').addEventListener('click', () => {
   else enterSession();
 });
 
-document.getElementById('btnTonic').addEventListener('click', () => {
-  playNote(rootMidi);
-});
-
-document.getElementById('btnTarget').addEventListener('click', () => {
-  playNote(rootMidi + INTERVALS[curInterval].semitones);
+document.getElementById('dirS').addEventListener('change', function () {
+  curDirection = this.value;
+  saveSettings();
+  drawClockFrame({ state: appState, targetSemitones: _effectiveSemitones() });
 });
 
 document.getElementById('stopBtn').addEventListener('click', stopSession);
@@ -211,6 +216,7 @@ buildIntervalGrid();
 // Sync root selectors to loaded values
 document.getElementById('rootNoteS').value = rootNote;
 document.getElementById('rootOctS').value  = rootOctave;
+document.getElementById('dirS').value      = curDirection;
 
 // Boot clock
 initClock();

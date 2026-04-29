@@ -151,6 +151,7 @@ body {
 }
 #clockCanvas {
   display: block;
+  cursor: pointer;
   border-radius: 50%;
   box-shadow:
     0 0 0 1px rgba(109,85,208,0.12),
@@ -185,6 +186,7 @@ body {
 .root-sel:focus  { outline: none; border-color: var(--accent); }
 .root-sel:disabled { opacity: .4; cursor: default; }
 .root-sel-oct { width: 52px; }
+.root-sel-dir { min-width: 94px; }
 
 /* Divider between selectors and note name */
 .readout-divider {
@@ -259,29 +261,8 @@ body[data-state="SINGING"] .readout-cents { font-size: 1.1rem; }
   width: 100%; display: flex; gap: 10px;
   align-items: stretch;
 }
-.btn-side-group {
-  flex: 1; display: flex; flex-direction: column; gap: 7px;
-}
-.btn-tonic,
-.btn-target {
-  flex: 1; padding: 11px 0;
-  background: var(--surf); color: var(--muted);
-  border: 1.5px solid var(--bord); border-radius: var(--r);
-  font-family: 'Inter', sans-serif;
-  font-size: .82rem; font-style: italic;
-  cursor: pointer; touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent; user-select: none;
-  transition: color .1s, border-color .1s, background .1s, transform .06s;
-}
-.btn-tonic:hover,
-.btn-target:hover  { color: var(--text); border-color: var(--bord2); background: var(--surf2); }
-.btn-tonic:active,
-.btn-target:active { transform: scale(.96); }
-.btn-tonic:disabled,
-.btn-target:disabled { opacity: .30; cursor: default; pointer-events: none; }
-
 .btn-sing {
-  flex: 2.6; padding: 0;
+  flex: 1; padding: 0;
   background: var(--accent); color: #fff;
   border: none; border-radius: var(--r);
   font-family: 'Inter', sans-serif;

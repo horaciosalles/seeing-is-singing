@@ -37,6 +37,7 @@ let _ctx    = null;
 // _displayAngle: smoothed clock-hand angle in degrees (0 = 12:00, + = clockwise).
 // Separate EMA on top of yin.js's own pitch smoothing → silky motion.
 let _displayAngle = 0;
+let _hasPitch     = false;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,30 @@ function initClock() {
   _ctx = _canvas.getContext('2d');
   _resize();
   new ResizeObserver(_resize).observe(_canvas.parentElement);
+  _canvas.addEventListener('click', _onSegmentClick);
+  _canvas.addEventListener('touchstart', (e) => { e.preventDefault(); _onSegmentClick(e); }, { passive: false });
+}
+
+// Tap/click on the arc ring → play the note for that semitone.
+function _onSegmentClick(e) {
+  const rect  = _canvas.getBoundingClientRect();
+  const touch = e.changedTouches ? e.changedTouches[0] : e;
+  const x     = touch.clientX - rect.left;
+  const y     = touch.clientY - rect.top;
+  const dpr   = window.devicePixelRatio || 1;
+  const W     = _canvas.width  / dpr;
+  const H     = _canvas.height / dpr;
+  const cx    = W / 2;
+  const cy    = H / 2;
+  const R     = Math.min(W, H) / 2 * 0.91;
+  const dx    = x - cx;
+  const dy    = y - cy;
+  const dist  = Math.sqrt(dx * dx + dy * dy);
+  if (dist < R * 0.770 || dist > R * 0.975) return;
+  let angle = Math.atan2(dy, dx) + Math.PI / 2;
+  if (angle < 0) angle += Math.PI * 2;
+  const semitone = Math.round(angle / (Math.PI * 2 / 12)) % 12;
+  playNote(rootMidi + semitone);
 }
 
 // Call at the start of each new drill to snap hand back to 12:00.
@@ -84,19 +109,21 @@ function _latestMidi() {
 }
 
 // EMA-smooth _displayAngle toward the pitch-derived target angle.
-// α = 0.07 → ~240 ms additional lag on top of yin.js's ~200 ms = ~440 ms total.
-// Lower α kills micro-jitter; lag is acceptable for slow sustained singing.
+// α = 0.10 → ~150 ms additional lag on top of yin.js's ~200 ms ≈ 200 ms total.
 function _updateAngle(state) {
   if (state === 'SINGING') {
     const midi = _latestMidi();
     if (midi !== null) {
+      _hasPitch = true;
       const raw = (midi - rootMidi) * 30; // degrees, + = clockwise
-      _displayAngle += (raw - _displayAngle) * 0.07;
+      _displayAngle += (raw - _displayAngle) * 0.10;
+    } else {
+      _hasPitch = false;
+      _displayAngle += (0 - _displayAngle) * 0.04; // drift back to root (12:00) when silent
     }
-    // Silence during SINGING: hold position, no drift
     return;
   }
-  // READY: no update (static display)
+  _hasPitch = false;
 }
 
 // ── Main rendering ────────────────────────────────────────────────────────────
@@ -115,8 +142,8 @@ function _render(state, targetSemitones) {
 
   // 1. Clock face ──────────────────────────────────────────────────────────────
   const faceGrad = ctx.createRadialGradient(cx, cy - R * 0.12, R * 0.08, cx, cy, R);
-  faceGrad.addColorStop(0, '#22203e');
-  faceGrad.addColorStop(1, '#0d0c1e');
+  faceGrad.addColorStop(0, '#302d5c');
+  faceGrad.addColorStop(1, '#1a1840');
   ctx.beginPath();
   ctx.arc(cx, cy, R, 0, Math.PI * 2);
   ctx.fillStyle = faceGrad;
@@ -241,8 +268,8 @@ function _render(state, targetSemitones) {
 
   // 5. Inner vignette (blends label ring into dark face) ──────────────────────
   const vigGrad = ctx.createRadialGradient(cx, cy, R * 0.36, cx, cy, R * 0.58);
-  vigGrad.addColorStop(0, 'rgba(13,12,30,0)');
-  vigGrad.addColorStop(1, 'rgba(13,12,30,0.70)');
+  vigGrad.addColorStop(0, 'rgba(26,24,64,0)');
+  vigGrad.addColorStop(1, 'rgba(26,24,64,0.70)');
   ctx.beginPath();
   ctx.arc(cx, cy, R * 0.58, 0, Math.PI * 2);
   ctx.fillStyle = vigGrad;
@@ -257,11 +284,11 @@ function _render(state, targetSemitones) {
   // Color the tip gem by the semitone position the hand is pointing at
   let hSemi = Math.round(_displayAngle / 30) % 12;
   if (hSemi < 0) hSemi += 12;
-  const hColor = SEMITONE_COLORS[hSemi];
+  const hColor = _hasPitch ? SEMITONE_COLORS[hSemi] : 'rgba(60,50,110,0.50)';
 
   ctx.save();
   ctx.shadowColor = hColor;
-  ctx.shadowBlur  = state === 'SINGING' ? 26 : 12;
+  ctx.shadowBlur  = (state === 'SINGING' && _hasPitch) ? 26 : 6;
 
   // Tapered hand body (wider at pivot, narrows to tip)
   const perp = handAngle + Math.PI / 2;
@@ -278,7 +305,7 @@ function _render(state, targetSemitones) {
   ctx.beginPath();
   ctx.arc(hTipX, hTipY, R * 0.030, 0, Math.PI * 2);
   ctx.fillStyle  = hColor;
-  ctx.shadowBlur = 30;
+  ctx.shadowBlur = _hasPitch ? 30 : 0;
   ctx.fill();
   ctx.restore();
 
@@ -307,8 +334,8 @@ function _render(state, targetSemitones) {
   ctx.stroke();
 
   // 8. Target diamond marker (on the outer ring midpoint) ─────────────────────
-  if (targetSemitones > 0) {
-    // Use raw targetSemitones (not tIdx) so octave (12) correctly places at 12:00
+  if (targetSemitones !== 0) {
+    // Use raw targetSemitones (not tIdx) so octave (12) places at 12:00; negatives go counter-clockwise
     const tAngle = (targetSemitones / 12) * Math.PI * 2 - Math.PI / 2;
     const tDotR  = R * 0.872;
     const tdx    = cx + tDotR * Math.cos(tAngle);
