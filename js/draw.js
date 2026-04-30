@@ -48,6 +48,7 @@ function initClock() {
   _ctx = _canvas.getContext('2d');
   _resize();
   new ResizeObserver(_resize).observe(_canvas.parentElement);
+  window.addEventListener('resize', _resize); // catch orientation change
   _canvas.addEventListener('click', _onSegmentClick);
   _canvas.addEventListener('touchstart', (e) => { e.preventDefault(); _onSegmentClick(e); }, { passive: false });
 }
@@ -98,11 +99,20 @@ function drawClockFrame({ state, targetSemitones }) {
 function _resize() {
   const dpr  = window.devicePixelRatio || 1;
   const wrap = _canvas.parentElement;
-  const size = Math.min(wrap.clientWidth, 460);
+  const vw   = window.innerWidth;
+  const vh   = window.innerHeight;
+  // In mobile landscape the clock would overflow the short axis — cap by height.
+  const size = (vw > vh * 1.3)
+    ? Math.min(vh - 60, vw * 0.44, 460)
+    : Math.min(wrap.clientWidth, 460);
   _canvas.style.width  = size + 'px';
   _canvas.style.height = size + 'px';
   _canvas.width  = Math.round(size * dpr);
   _canvas.height = Math.round(size * dpr);
+  // Keep static READY frame fresh after resize (RAF only runs during SINGING).
+  if (typeof appState !== 'undefined' && appState !== 'SINGING') {
+    drawClockFrame({ state: appState, targetSemitones: _effectiveSemitones() });
+  }
 }
 
 // Returns the latest smoothed MIDI from the pitch buffer, or null if silent.
@@ -269,7 +279,7 @@ function _render(state, targetSemitones) {
 
     ctx.font = isRoot
       ? `700 ${(R * 0.074).toFixed(1)}px 'IBM Plex Mono',monospace`
-      :        `${(R * 0.060).toFixed(1)}px 'IBM Plex Mono',monospace`;
+      : `500 ${(R * 0.068).toFixed(1)}px 'IBM Plex Mono',monospace`;
     ctx.fillStyle = isLit  ? '#ffffff'
                  : isRoot  ? 'rgba(255,255,255,0.95)'
                  : isTgt   ? segColor

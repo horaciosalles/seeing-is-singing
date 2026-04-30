@@ -296,3 +296,22 @@ body[data-state="SINGING"] .readout-cents { font-size: 1.1rem; }
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── LANDSCAPE (mobile phones rotated) ── */
+@media (orientation: landscape) and (max-height: 500px) {
+  .main {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 14px;
+    padding: 8px 12px;
+    align-items: start;
+  }
+  .clock-wrap   { grid-column: 1; grid-row: 1 / -1; padding: 0; justify-content: flex-start; }
+  .readout      { grid-column: 2; min-height: 0; }
+  .iv-grid      { grid-column: 2; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  #actionsWrap  { grid-column: 2; }
+  #stopBtn      { grid-column: 2; }
+  .iv-tile      { min-height: 44px; }
+  .readout-note { font-size: 1.4rem; }
+  body[data-state="SINGING"] .readout-note { font-size: 2rem; }
+}

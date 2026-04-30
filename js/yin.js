@@ -6,8 +6,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
 
-const NOISE_GATE = 0.012;
-const CLARITY_GATE = 0.055;
+const NOISE_GATE    = 0.018; // raised: filters quiet ambient / traffic hiss
+const CLARITY_GATE  = 0.045; // tightened: require cleaner fundamental (traffic ~0.07+)
 
 // Working buffers
 const timeBuf = new Float32Array(4096);
@@ -140,7 +140,7 @@ const pitchState = {
   wasNull:        true,
   buf:            [],
   onsetFrames:    0,
-  MIN_ONSET_FRAMES: 3,  // ~50ms at 60fps; suppress brief noise spikes
+  MIN_ONSET_FRAMES: 5,  // ~83ms at 60fps; suppresses transient noise spikes
 
   reset() {
     this.ema = null; this.recent = []; this.hold = 0;
