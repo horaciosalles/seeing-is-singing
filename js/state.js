@@ -1,29 +1,27 @@
 // ── state.js ──────────────────────────────────────────────────────────────────
-// @version 0.5
-// Free-practice mode. No metronome, no drill phases.
-// Sing! starts continuous pitch tracking; Stop ends it.
+// @version 0.6
+// Free-practice mode. Minimalist clock-only UI.
+//   • Root note + octave controlled by range sliders.
+//   • Interval target set by clicking arc segments on the clock canvas.
+//   • Ascending / descending toggled by the date-roller complication on the clock.
+//   • Pitch readout drawn on the canvas (no separate DOM elements).
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
 
-const VERSION = 'v0.5';
-
-const INTERVAL_ABBRS  = ['m2','M2','m3','M3','P4','°5','P5','m6','M6','m7','M7','P8'];
-const INTERVAL_SHORTS = ['min 2nd','maj 2nd','min 3rd','maj 3rd','perf 4th',
-                         'dim 5th','perf 5th','min 6th','maj 6th','min 7th','maj 7th','octave'];
+const VERSION = 'v0.6';
 
 // ── Root note state ───────────────────────────────────────────────────────────
-// rootMidi is accessed directly by draw.js (shared global scope).
 let rootNote   = 0;   // pitch class 0–11 (C=0)
-let rootOctave = 4;   // octave 1–6
-let rootMidi   = 60;  // = (rootOctave + 1) * 12 + rootNote
+let rootOctave = 4;
+let rootMidi   = 60;  // (rootOctave + 1) * 12 + rootNote
 
 function _updateRootMidi() {
   rootMidi = (rootOctave + 1) * 12 + rootNote;
 }
 
-// ── Interval state ────────────────────────────────────────────────────────────
-let curInterval  = 6;    // index into INTERVALS
-let curDirection = 'asc'; // 'asc' | 'desc'
+// ── Interval / direction state ────────────────────────────────────────────────
+let curInterval  = 6;    // index into INTERVALS (default: P5)
+let curDirection = 'asc';
 
 function _effectiveSemitones() {
   const s = INTERVALS[curInterval].semitones;
@@ -59,14 +57,12 @@ function setState(s) {
 
   const actionsWrap = document.getElementById('actionsWrap');
   const stopBtn     = document.getElementById('stopBtn');
-  const ivGrid      = document.getElementById('intervalGrid');
   const locked      = s === 'SINGING';
 
-  ['rootNoteS','rootOctS','dirS','btnSing'].forEach(id => {
+  ['rootNoteR', 'rootOctR', 'btnSing'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = locked;
   });
-  if (ivGrid) ivGrid.classList.toggle('locked', locked);
 
   actionsWrap.classList.toggle('hidden', s !== 'READY');
   stopBtn.classList.toggle('hidden',     s !== 'SINGING');
@@ -78,9 +74,7 @@ let rafId = null;
 function rafLoop() {
   if (appState !== 'SINGING') return;
   rafId = requestAnimationFrame(rafLoop);
-
-  processPitchFrame(0); // gpi unused in clock renderer
-  updateReadout();
+  processPitchFrame(0);
   drawClockFrame({
     state:           'SINGING',
     targetSemitones: _effectiveSemitones(),
@@ -96,7 +90,6 @@ function enterSession() {
 
 function stopSession() {
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-  if (actx && actx.state === 'suspended') actx.resume();
   setState('READY');
   drawClockFrame({
     state:           'READY',
@@ -104,66 +97,50 @@ function stopSession() {
   });
 }
 
-// ── Readout ───────────────────────────────────────────────────────────────────
-function updateReadout() {
-  const p  = getLatestPitch();
-  const ne = document.getElementById('readoutNote');
-  const ce = document.getElementById('readoutCents');
-  if (!ne || !ce) return;
-  if (!p) {
-    ne.textContent = '—'; ne.style.color = ''; ce.textContent = '';
-    return;
-  }
-  ne.textContent = p.noteName;
-  ne.style.color = Math.abs(p.cents) < 25 ? '#1f9960'   // green  — in tune
-                 : Math.abs(p.cents) < 50 ? '#b07800'   // amber  — close
-                 :                           '#c0306a';  // red    — off
-  ce.textContent = (p.cents >= 0 ? '+' : '') + p.cents.toFixed(0) + '¢';
+// ── Canvas-driven controls (called from draw.js click handler) ────────────────
+
+// Called when the user clicks clock position clockPos (0–11).
+// Maps clock position to the matching interval and sets it as the target.
+// Also plays the target note for audio preview.
+function setTargetFromClock(clockPos) {
+  const isDesc = curDirection === 'desc';
+  // _nameIdx equivalent: in desc mode the face is mirrored
+  const nameI  = isDesc ? (12 - clockPos) % 12 : clockPos;
+  // nameI 0 ↔ Root/Octave → maps to INTERVALS[11] (Octave, 12 semitones)
+  // nameI 1 ↔ m2          → maps to INTERVALS[0]
+  curInterval = (nameI - 1 + 12) % 12;
+  saveSettings();
+  const targetMidi = isDesc
+    ? rootMidi - INTERVALS[curInterval].semitones
+    : rootMidi + INTERVALS[curInterval].semitones;
+  playNote(targetMidi);
+  drawClockFrame({ state: appState, targetSemitones: _effectiveSemitones() });
 }
 
-// ── Interval grid ─────────────────────────────────────────────────────────────
-function buildIntervalGrid() {
-  const grid = document.getElementById('intervalGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  INTERVALS.forEach((iv, i) => {
-    const tile = document.createElement('button');
-    tile.type = 'button';
-    tile.className = 'iv-tile' + (i === curInterval ? ' selected' : '');
-    tile.innerHTML =
-      `<span class="iv-abbr">${INTERVAL_ABBRS[i]}</span>` +
-      `<span class="iv-name">${INTERVAL_SHORTS[i]}</span>`;
-    tile.addEventListener('click', () => {
-      if (appState === 'SINGING') return;
-      curInterval = i;
-      saveSettings();
-      grid.querySelectorAll('.iv-tile').forEach(t => t.classList.remove('selected'));
-      tile.classList.add('selected');
-      resetPitch();
-      drawClockFrame({
-        state:           appState,
-        targetSemitones: _effectiveSemitones(),
-      });
-    });
-    grid.appendChild(tile);
-  });
+// Called when the user taps the date-roller complication.
+function toggleDirection() {
+  curDirection = curDirection === 'asc' ? 'desc' : 'asc';
+  saveSettings();
+  drawClockFrame({ state: appState, targetSemitones: _effectiveSemitones() });
 }
 
-// ── Root note selectors ───────────────────────────────────────────────────────
-document.getElementById('rootNoteS').addEventListener('change', function () {
+// ── Root slider listeners ─────────────────────────────────────────────────────
+document.getElementById('rootNoteR').addEventListener('input', function () {
   rootNote = +this.value;
   _updateRootMidi();
+  document.getElementById('rootNoteLabel').textContent = NOTE_NAMES[rootNote];
   saveSettings();
   resetPitch();
-  drawClockFrame({ state: appState, targetSemitones: INTERVALS[curInterval].semitones });
+  drawClockFrame({ state: appState, targetSemitones: _effectiveSemitones() });
 });
 
-document.getElementById('rootOctS').addEventListener('change', function () {
+document.getElementById('rootOctR').addEventListener('input', function () {
   rootOctave = +this.value;
   _updateRootMidi();
+  document.getElementById('rootOctLabel').textContent = rootOctave;
   saveSettings();
   resetPitch();
-  drawClockFrame({ state: appState, targetSemitones: INTERVALS[curInterval].semitones });
+  drawClockFrame({ state: appState, targetSemitones: _effectiveSemitones() });
 });
 
 // ── How it works toggle ───────────────────────────────────────────────────────
@@ -181,7 +158,7 @@ document.getElementById('grantBtn').addEventListener('click', async () => {
   if (ok) {
     document.getElementById('ov').classList.add('gone');
     setState('READY');
-    drawClockFrame({ state: 'READY', targetSemitones: INTERVALS[curInterval].semitones });
+    drawClockFrame({ state: 'READY', targetSemitones: _effectiveSemitones() });
   } else {
     const e = document.getElementById('ovErr');
     e.style.display = 'block';
@@ -195,12 +172,6 @@ document.getElementById('btnSing').addEventListener('click', () => {
   else enterSession();
 });
 
-document.getElementById('dirS').addEventListener('change', function () {
-  curDirection = this.value;
-  saveSettings();
-  drawClockFrame({ state: appState, targetSemitones: _effectiveSemitones() });
-});
-
 document.getElementById('stopBtn').addEventListener('click', stopSession);
 
 // ── Version badge ─────────────────────────────────────────────────────────────
@@ -211,15 +182,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadSettings();
-buildIntervalGrid();
 
-// Sync root selectors to loaded values
-document.getElementById('rootNoteS').value = rootNote;
-document.getElementById('rootOctS').value  = rootOctave;
-document.getElementById('dirS').value      = curDirection;
+// Sync sliders and labels to loaded values
+const _noteR = document.getElementById('rootNoteR');
+const _octR  = document.getElementById('rootOctR');
+if (_noteR) _noteR.value = rootNote;
+if (_octR)  _octR.value  = rootOctave;
+document.getElementById('rootNoteLabel').textContent = NOTE_NAMES[rootNote];
+document.getElementById('rootOctLabel').textContent  = rootOctave;
 
 // Boot clock
 initClock();
 requestAnimationFrame(() => requestAnimationFrame(() => {
-  drawClockFrame({ state: 'READY', targetSemitones: INTERVALS[curInterval].semitones });
+  drawClockFrame({ state: 'READY', targetSemitones: _effectiveSemitones() });
 }));

@@ -1,6 +1,6 @@
 /* ── main.css ─────────────────────────────────────────────────────────────────
-   @version 0.5
-   SightSing — free-practice clock interface, light theme.
+   @version 0.6
+   SightSing — minimalist clock interface, dark theme.
    ─────────────────────────────────────────────────────────────────────────── */
 
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Inter:wght@400;500;700&display=swap');
@@ -8,19 +8,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:      #c9bff0;
-  --surf:    #ffffff;
-  --surf2:   #ebe6fd;
-  --bord:    rgba(109,86,210,0.16);
-  --bord2:   rgba(109,86,210,0.38);
-  --text:    #1c1635;
-  --muted:   #7a6fa8;
-  --accent:  #6d55d0;
-  --danger:  #d93c3c;
-  --r:       8px;
+  --bg:     #12102a;
+  --bord:   rgba(167,139,250,0.18);
+  --bord2:  rgba(167,139,250,0.40);
+  --text:   #e8e4ff;
+  --muted:  rgba(167,139,250,0.55);
+  --accent: #7c65f0;
+  --danger: #e05555;
+  --r:      10px;
 }
 
-html, body { height: 100%; overflow-x: hidden; }
+html, body { height: 100%; overflow: hidden; }
 
 body {
   background: var(--bg);
@@ -29,7 +27,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 100dvh;
+  height: 100dvh;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -40,7 +38,7 @@ body {
   font-family: 'IBM Plex Mono', monospace;
   font-size: .5rem;
   color: var(--muted);
-  opacity: .5;
+  opacity: .45;
   letter-spacing: .06em;
   z-index: 50;
   pointer-events: none;
@@ -50,7 +48,7 @@ body {
 /* ── OVERLAY ── */
 .ov {
   position: fixed; inset: 0; z-index: 100;
-  background: rgba(244,241,255,0.96);
+  background: rgba(14, 12, 36, 0.97);
   backdrop-filter: blur(20px);
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
@@ -66,6 +64,7 @@ body {
 
 .ov-logo {
   font-size: 2.8rem; font-weight: 700; letter-spacing: -.02em; line-height: 1;
+  color: var(--text);
 }
 .ov-logo em { font-style: italic; font-weight: 400; color: var(--accent); }
 
@@ -79,7 +78,7 @@ body {
   font-size: .95rem; font-weight: 700; letter-spacing: .03em;
   cursor: pointer; touch-action: manipulation;
   transition: opacity .15s, transform .07s;
-  box-shadow: 0 4px 20px rgba(109,85,208,0.30);
+  box-shadow: 0 4px 24px rgba(124,101,240,0.38);
 }
 .ov-start:hover  { opacity: .88; }
 .ov-start:active { transform: scale(.97); }
@@ -96,7 +95,7 @@ body {
 .ov-steps {
   list-style: none;
   width: 100%; text-align: left;
-  background: var(--surf);
+  background: rgba(255,255,255,0.04);
   border: 1px solid var(--bord);
   border-radius: var(--r);
   padding: 14px 18px;
@@ -122,171 +121,119 @@ body {
   width: 100%; text-align: left;
 }
 
-/* ── HEADER ── */
-.hdr {
-  width: 100%;
-  background: var(--surf);
-  border-bottom: 1px solid var(--bord);
-  display: flex; align-items: center;
-  padding: 12px 18px;
-  flex-shrink: 0;
-}
-.logo { font-size: 1.1rem; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
-.logo em { font-style: italic; font-weight: 400; color: var(--accent); }
-
 /* ── MAIN ── */
 .main {
   width: 100%; max-width: 520px;
+  height: 100dvh;
   display: flex; flex-direction: column; align-items: center;
-  padding: 16px 16px 48px;
-  gap: 12px;
-  flex: 1;
+  padding: 12px 18px 14px;
+  gap: 10px;
+  overflow: hidden;
 }
 
 /* ── CLOCK HERO ── */
 .clock-wrap {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  display: flex; justify-content: center;
-  padding: 4px 0;
+  display: flex; justify-content: center; align-items: center;
 }
 #clockCanvas {
   display: block;
   cursor: pointer;
   border-radius: 50%;
-  box-shadow:
-    0 0 0 1px rgba(109,85,208,0.12),
-    0 12px 48px rgba(109,85,208,0.18),
-    0 2px 8px rgba(0,0,0,0.10);
 }
 
-/* ── READOUT (root selectors + note name + cents) ── */
-.readout {
-  display: flex; align-items: center; justify-content: center;
-  gap: 10px; min-height: 38px; width: 100%;
-}
-
-/* Root note + octave selectors */
-.root-selectors {
-  display: flex; gap: 5px; align-items: center;
-  flex-shrink: 0;
-}
-.root-sel {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: .78rem; font-weight: 500;
-  background: var(--surf);
-  border: 1.5px solid var(--bord2);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 5px 7px;
-  cursor: pointer;
-  appearance: auto;
-  transition: border-color .1s;
-}
-.root-sel:hover  { border-color: var(--accent); }
-.root-sel:focus  { outline: none; border-color: var(--accent); }
-.root-sel:disabled { opacity: .4; cursor: default; }
-.root-sel-oct { width: 52px; }
-.root-sel-dir { min-width: 94px; }
-
-/* Divider between selectors and note name */
-.readout-divider {
-  width: 1px; height: 26px;
-  background: var(--bord2);
-  flex-shrink: 0;
-}
-
-.readout-note {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 1.8rem; font-weight: 700;
-  color: var(--text); min-width: 36px; text-align: right;
-  transition: font-size .22s ease, color .12s;
-}
-.readout-cents {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: .8rem; color: var(--muted); min-width: 52px;
-  transition: font-size .22s ease;
-}
-body[data-state="SINGING"] .readout-note  { font-size: 3.2rem; }
-body[data-state="SINGING"] .readout-cents { font-size: 1.1rem; }
-
-/* ── INTERVAL GRID ── */
-.iv-grid {
+/* ── ROOT SLIDERS ── */
+.root-sliders {
   width: 100%;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 7px;
+  flex-shrink: 0;
 }
-@media (max-width: 340px) {
-  .iv-grid { grid-template-columns: repeat(3, 1fr); }
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.iv-tile {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 3px; min-height: 56px;
-  background: var(--surf);
-  border: 1.5px solid var(--bord);
-  border-radius: var(--r);
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+
+.slider-lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .82rem; font-weight: 700;
+  color: var(--accent);
+  min-width: 28px;
+  text-align: right;
   user-select: none;
-  transition: background .1s, border-color .12s, transform .06s, opacity .2s;
-  padding: 4px 2px;
+  flex-shrink: 0;
 }
-.iv-tile:hover  { background: var(--surf2); border-color: var(--bord2); }
-.iv-tile:active { transform: scale(.91); }
-.iv-abbr {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: .88rem; font-weight: 500;
-  color: var(--text); line-height: 1;
+
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: var(--bord2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
 }
-.iv-name {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: .40rem; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .04em;
-  line-height: 1.3; text-align: center;
-  padding: 0 3px; word-break: break-word;
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(124,101,240,0.60);
+  transition: transform .1s;
 }
-.iv-tile.selected {
-  background: rgba(109,85,208,0.10);
-  border-color: var(--accent);
-  box-shadow: 0 0 14px rgba(109,85,208,0.14);
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.18); }
+input[type="range"]::-moz-range-thumb {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(124,101,240,0.60);
 }
-.iv-tile.selected .iv-abbr { color: var(--accent); }
-.iv-tile.selected .iv-name  { color: rgba(109,85,208,0.60); }
-.iv-grid.locked { opacity: .35; pointer-events: none; }
+input[type="range"]:disabled {
+  opacity: .28;
+  cursor: default;
+  pointer-events: none;
+}
 
 /* ── ACTIONS ── */
-.actions {
-  width: 100%; display: flex; gap: 10px;
-  align-items: stretch;
-}
+.actions { width: 100%; flex-shrink: 0; }
+
 .btn-sing {
-  flex: 1; padding: 0;
+  width: 100%; padding: 14px 0;
   background: var(--accent); color: #fff;
   border: none; border-radius: var(--r);
   font-family: 'Inter', sans-serif;
-  font-size: 1.1rem; font-weight: 700; letter-spacing: .03em;
+  font-size: 1rem; font-weight: 700; letter-spacing: .05em;
   cursor: pointer; touch-action: manipulation;
   -webkit-tap-highlight-color: transparent; user-select: none;
   transition: opacity .1s, transform .06s;
-  box-shadow: 0 4px 20px rgba(109,85,208,0.30);
+  box-shadow: 0 4px 22px rgba(124,101,240,0.38);
+  flex-shrink: 0;
 }
 .btn-sing:hover    { opacity: .88; }
 .btn-sing:active   { transform: scale(.98); }
-.btn-sing:disabled { opacity: .30; cursor: default; pointer-events: none; }
+.btn-sing:disabled { opacity: .28; cursor: default; pointer-events: none; }
 
 .btn-stop {
-  width: 100%; padding: 15px 0;
+  width: 100%; padding: 14px 0;
   background: transparent; color: var(--danger);
-  border: 2px solid rgba(217,60,60,0.40); border-radius: var(--r);
+  border: 1.5px solid rgba(224,85,85,0.30); border-radius: var(--r);
   font-family: 'Inter', sans-serif;
   font-size: .95rem; font-weight: 700; letter-spacing: .04em;
   cursor: pointer; touch-action: manipulation;
   -webkit-tap-highlight-color: transparent; user-select: none;
   transition: background .1s, transform .06s;
+  flex-shrink: 0;
 }
-.btn-stop:hover  { background: rgba(217,60,60,0.08); }
+.btn-stop:hover  { background: rgba(224,85,85,0.08); }
 .btn-stop:active { transform: scale(.98); }
 
 .hidden { display: none !important; }
@@ -295,23 +242,4 @@ body[data-state="SINGING"] .readout-cents { font-size: 1.1rem; }
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── LANDSCAPE (mobile phones rotated) ── */
-@media (orientation: landscape) and (max-height: 500px) {
-  .main {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 8px 14px;
-    padding: 8px 12px;
-    align-items: start;
-  }
-  .clock-wrap   { grid-column: 1; grid-row: 1 / -1; padding: 0; justify-content: flex-start; }
-  .readout      { grid-column: 2; min-height: 0; }
-  .iv-grid      { grid-column: 2; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-  #actionsWrap  { grid-column: 2; }
-  #stopBtn      { grid-column: 2; }
-  .iv-tile      { min-height: 44px; }
-  .readout-note { font-size: 1.4rem; }
-  body[data-state="SINGING"] .readout-note { font-size: 2rem; }
 }

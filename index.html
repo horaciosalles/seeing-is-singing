@@ -8,7 +8,7 @@
 </head>
 <body data-state="READY">
 
-<div class="version-badge" id="versionBadge">v0.5</div>
+<div class="version-badge" id="versionBadge">v0.6</div>
 
 <!-- Mic permission overlay -->
 <div class="ov" id="ov">
@@ -18,19 +18,14 @@
     <button class="ov-start" id="grantBtn">Start — allow microphone</button>
     <button class="ov-how-btn" id="howBtn">How does it work ↓</button>
     <ol class="ov-steps" id="ovSteps" style="display:none">
-      <li>Set the root note (default C4) and choose an interval</li>
-      <li>Press <strong>Tonic</strong> or <strong>Target</strong> to hear reference pitches</li>
-      <li>Press <strong>Sing!</strong> and sing freely — watch the clock hand</li>
-      <li>Aim for the glowing marker; the arc lights up when you lock in</li>
+      <li>Slide to choose your root note and octave</li>
+      <li>Tap any segment on the clock to set the target interval — it plays the note</li>
+      <li>Press <strong>Sing!</strong> and sing freely — watch the clock hand; the clock glows when you land on the target</li>
+      <li>The small dial at 3 o'clock toggles ascending / descending</li>
     </ol>
     <p class="ov-err" id="ovErr" style="display:none"></p>
   </div>
 </div>
-
-<!-- Header -->
-<header class="hdr">
-  <span class="logo">Sight<em>Sing</em></span>
-</header>
 
 <!-- Main content -->
 <main class="main">
@@ -40,46 +35,21 @@
     <canvas id="clockCanvas"></canvas>
   </div>
 
-  <!-- Root selector + live pitch readout (same row) -->
-  <div class="readout">
-    <div class="root-selectors">
-      <select id="rootNoteS" class="root-sel">
-        <option value="0">C</option>
-        <option value="1">C♯</option>
-        <option value="2">D</option>
-        <option value="3">D♯</option>
-        <option value="4">E</option>
-        <option value="5">F</option>
-        <option value="6">F♯</option>
-        <option value="7">G</option>
-        <option value="8">G♯</option>
-        <option value="9">A</option>
-        <option value="10">A♯</option>
-        <option value="11">B</option>
-      </select>
-      <select id="rootOctS" class="root-sel root-sel-oct">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4" selected>4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-      </select>
-      <select id="dirS" class="root-sel root-sel-dir">
-        <option value="asc">Ascending</option>
-        <option value="desc">Descending</option>
-      </select>
+  <!-- Root sliders -->
+  <div class="root-sliders">
+    <div class="slider-row">
+      <span class="slider-lbl" id="rootNoteLabel">C</span>
+      <input type="range" id="rootNoteR" min="0" max="11" step="1" value="0">
     </div>
-    <span class="readout-note" id="readoutNote">—</span>
-    <span class="readout-cents" id="readoutCents"></span>
+    <div class="slider-row">
+      <span class="slider-lbl" id="rootOctLabel">4</span>
+      <input type="range" id="rootOctR" min="1" max="6" step="1" value="4">
+    </div>
   </div>
 
-  <!-- Interval grid -->
-  <div class="iv-grid" id="intervalGrid"></div>
-
-  <!-- READY state actions -->
+  <!-- READY state action -->
   <div class="actions" id="actionsWrap">
-    <button class="btn-sing" id="btnSing">Sing!</button>
+    <button class="btn-sing" id="btnSing">▶ Sing</button>
   </div>
 
   <!-- SINGING state -->
