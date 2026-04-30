@@ -1,13 +1,13 @@
 // ── draw.js ───────────────────────────────────────────────────────────────────
-// @version 0.6
+// @version 0.7
 // Clock renderer. 12-semitone circular interface.
 // Root at 12:00. Ascending intervals clockwise, 30° per semitone.
 //
-// New in 0.6:
-//   • Clicking an arc segment sets the target interval (plays note for preview).
-//   • Date-roller complication at 3 o'clock toggles ascending / descending.
-//   • On-target feedback: radial center glow + rim pulse + green pitch readout.
-//   • Pitch note + cents drawn on canvas (no separate DOM readout).
+// New in 0.7:
+//   • Clock fills full viewport (no slider reservation).
+//   • Octave sub-segments drawn below root arc (inner area at 12 o'clock).
+//   • Diamond marker removed.
+//   • Geometry broadcast via window._onClockResize for overlay positioning.
 //
 // Depends on: yin.js (pitchState, getLatestPitch), theory.js (INTERVALS, NOTE_NAMES, mpc, moct)
 //             state globals: rootMidi, curDirection, appState, _effectiveSemitones()
@@ -111,15 +111,22 @@ function _onCanvasClick(e) {
 function _resize() {
   const dpr  = window.devicePixelRatio || 1;
   const wrap = _canvas.parentElement;
-  const vw   = window.innerWidth;
   const vh   = window.innerHeight;
-  // Reserve ~150px for sliders + button + padding/gaps.
-  const maxH = vh - 150;
-  const size = Math.min(wrap.clientWidth, maxH, 480);
+  const maxH = vh - 16;
+  const size = Math.min(wrap.clientWidth, maxH);
   _canvas.style.width  = size + 'px';
   _canvas.style.height = size + 'px';
   _canvas.width  = Math.round(size * dpr);
   _canvas.height = Math.round(size * dpr);
+
+  // Broadcast geometry so state.js can position overlays
+  const R    = size / 2 * 0.91;
+  const wrapW = wrap.clientWidth;
+  const wrapH = wrap.clientHeight;
+  if (typeof window._onClockResize === 'function') {
+    window._onClockResize({ R, size, wrapW, wrapH });
+  }
+
   if (typeof appState !== 'undefined' && appState !== 'SINGING') {
     drawClockFrame({ state: appState, targetSemitones: _effectiveSemitones() });
   }
@@ -424,6 +431,43 @@ function _render(state, targetSemitones) {
   ctx.fillStyle = vigGrad;
   ctx.fill();
 
+  // 6.5. Octave sub-segments (inner area at 12 o'clock, below root arc) ────────
+  {
+    const a0Root  = ((-0.5) / 12) * Math.PI * 2 - Math.PI / 2 + arcGap;
+    const a1Root  = (( 0.5) / 12) * Math.PI * 2 - Math.PI / 2 - arcGap;
+    const aCenter = -Math.PI / 2;
+    const subGap  = 0.030;
+    const octOuter = R * 0.700;
+    const octInner = R * 0.530;
+    const rootCol  = SEMITONE_COLORS[0];
+
+    // Left — octave down
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, octOuter, a0Root, aCenter - subGap);
+    ctx.arc(cx, cy, octInner, aCenter - subGap, a0Root, true);
+    ctx.closePath();
+    ctx.fillStyle = rootCol + '28';
+    ctx.fill();
+    ctx.strokeStyle = rootCol + '66';
+    ctx.lineWidth = 0.75;
+    ctx.stroke();
+    ctx.restore();
+
+    // Right — octave up
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, octOuter, aCenter + subGap, a1Root);
+    ctx.arc(cx, cy, octInner, a1Root, aCenter + subGap, true);
+    ctx.closePath();
+    ctx.fillStyle = rootCol + '28';
+    ctx.fill();
+    ctx.strokeStyle = rootCol + '66';
+    ctx.lineWidth = 0.75;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // 7. On-target center glow ────────────────────────────────────────────────────
   if (onTarget) {
     const t = performance.now() / 1000;
@@ -514,32 +558,6 @@ function _render(state, targetSemitones) {
 
   // 11. Pitch readout (note name + cents, drawn in center area below hub) ──────
   _drawPitchReadout(ctx, cx, cy, R, state, tColor, onTarget);
-
-  // 12. Target diamond marker ─────────────────────────────────────────────────
-  if (targetSemitones !== 0) {
-    const tAngle = (targetSemitones / 12) * Math.PI * 2 - Math.PI / 2;
-    const tDotR  = R * 0.938;
-    const tdx    = cx + tDotR * Math.cos(tAngle);
-    const tdy    = cy + tDotR * Math.sin(tAngle);
-    const ds = R * 0.040;
-
-    ctx.save();
-    ctx.shadowColor = tColor;
-    ctx.shadowBlur  = onTarget ? 32 : 20;
-    ctx.beginPath();
-    ctx.moveTo(tdx,      tdy - ds);
-    ctx.lineTo(tdx + ds, tdy);
-    ctx.lineTo(tdx,      tdy + ds);
-    ctx.lineTo(tdx - ds, tdy);
-    ctx.closePath();
-    ctx.fillStyle = tColor;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = 'rgba(255,255,255,0.88)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-  }
 
   ctx.restore();
 }
