@@ -38,6 +38,7 @@ let _ctx    = null;
 // Separate EMA on top of yin.js's own pitch smoothing → silky motion.
 let _displayAngle = 0;
 let _hasPitch     = false;
+let _litSemiClass = -1; // clock-position index of neon-lit segment (-1 = none)
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -70,13 +71,18 @@ function _onSegmentClick(e) {
   let angle = Math.atan2(dy, dx) + Math.PI / 2;
   if (angle < 0) angle += Math.PI * 2;
   const semitone = Math.round(angle / (Math.PI * 2 / 12)) % 12;
-  playNote(rootMidi + semitone);
+  const nameI    = _nameIdx(semitone);
+  playNote(_isDesc() ? rootMidi - nameI : rootMidi + nameI);
 }
 
 // Call at the start of each new drill to snap hand back to 12:00.
 function resetClockAngle() {
   _displayAngle = 0;
 }
+
+// In descending mode the face is mirrored: position i shows interval (12-i)%12.
+function _isDesc()     { return curDirection === 'desc'; }
+function _nameIdx(pos) { return _isDesc() ? (12 - pos) % 12 : pos; }
 
 // Main draw entry point — called from state.js RAF loop and on static redraws.
 // targetSemitones: the interval (in semitones) currently being targeted.
@@ -135,6 +141,7 @@ function _render(state, targetSemitones) {
   const cy  = H / 2;
   const R   = Math.min(W, H) / 2 * 0.91;
 
+  _litSemiClass = -1; // reset each frame; section 3.5 sets it if neon fires
   const ctx = _ctx;
   ctx.save();
   ctx.scale(dpr, dpr);
@@ -168,23 +175,24 @@ function _render(state, targetSemitones) {
     ctx.arc(cx, cy, segOuter, a0, a1);
     ctx.arc(cx, cy, segInner, a1, a0, true);
     ctx.closePath();
-    ctx.fillStyle = SEMITONE_COLORS[i] + '28'; // ~16 % opacity base
+    ctx.fillStyle = SEMITONE_COLORS[_nameIdx(i)] + '28'; // ~16 % opacity base
     ctx.fill();
   }
 
   // 3. Target segment (glowing) ────────────────────────────────────────────────
-  const tIdx = ((Math.round(targetSemitones) % 12) + 12) % 12;
+  const tIdx   = ((Math.round(targetSemitones) % 12) + 12) % 12;
+  const tColor = SEMITONE_COLORS[_nameIdx(tIdx)];
   {
     const a0 = ((tIdx - 0.5) / 12) * Math.PI * 2 - Math.PI / 2 + arcGap;
     const a1 = ((tIdx + 0.5) / 12) * Math.PI * 2 - Math.PI / 2 - arcGap;
     ctx.save();
-    ctx.shadowColor = SEMITONE_COLORS[tIdx];
+    ctx.shadowColor = tColor;
     ctx.shadowBlur  = 24;
     ctx.beginPath();
     ctx.arc(cx, cy, segOuter, a0, a1);
     ctx.arc(cx, cy, segInner, a1, a0, true);
     ctx.closePath();
-    ctx.fillStyle = SEMITONE_COLORS[tIdx] + 'cc'; // ~80 % opacity
+    ctx.fillStyle = tColor + 'cc'; // ~80 % opacity
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
@@ -202,7 +210,8 @@ function _render(state, targetSemitones) {
       const intensity = Math.max(0, 1 - (centsOff / 35) ** 2);
 
       if (intensity > 0.04) {
-        const color = SEMITONE_COLORS[semiClass];
+        _litSemiClass   = semiClass;
+        const color     = SEMITONE_COLORS[_nameIdx(semiClass)];
         const a0    = ((semiClass - 0.5) / 12) * Math.PI * 2 - Math.PI / 2 + arcGap;
         const a1    = ((semiClass + 0.5) / 12) * Math.PI * 2 - Math.PI / 2 - arcGap;
 
@@ -234,36 +243,40 @@ function _render(state, targetSemitones) {
 
   // 4. Tick marks and interval labels ──────────────────────────────────────────
   for (let i = 0; i < 12; i++) {
-    const angle  = (i / 12) * Math.PI * 2 - Math.PI / 2;
-    const isRoot = i === 0;
-    const isTgt  = i === tIdx;
+    const angle    = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const nameI    = _nameIdx(i);          // interval index for this clock position
+    const segColor = SEMITONE_COLORS[nameI];
+    const isRoot   = nameI === 0;
+    const isTgt    = i === tIdx;
+    const isLit    = i === _litSemiClass;
 
-    // Tick line
+    // Tick line (between face and arc ring)
     const tOuter = R * 0.750;
     const tInner = isRoot ? R * 0.625 : R * 0.690;
     ctx.beginPath();
     ctx.moveTo(cx + tInner * Math.cos(angle), cy + tInner * Math.sin(angle));
     ctx.lineTo(cx + tOuter * Math.cos(angle), cy + tOuter * Math.sin(angle));
-    ctx.strokeStyle = isRoot ? 'rgba(255,255,255,0.90)'
-                   : isTgt  ? SEMITONE_COLORS[tIdx]
-                   :           'rgba(255,255,255,0.20)';
-    ctx.lineWidth = isRoot ? 2.5 : isTgt ? 2.0 : 1.0;
+    ctx.strokeStyle = (isRoot || isLit) ? 'rgba(255,255,255,0.90)'
+                    : isTgt             ? segColor
+                    :                     'rgba(255,255,255,0.20)';
+    ctx.lineWidth   = isRoot ? 2.5 : (isTgt || isLit) ? 2.0 : 1.0;
     ctx.stroke();
 
-    // Label
-    const lR = R * 0.600;
+    // Label — centered inside the arc ring
+    const lR = R * 0.868;
     const lx = cx + lR * Math.cos(angle);
     const ly = cy + lR * Math.sin(angle);
 
     ctx.font = isRoot
-      ? `700 ${(R * 0.078).toFixed(1)}px 'IBM Plex Mono',monospace`
-      :        `${(R * 0.065).toFixed(1)}px 'IBM Plex Mono',monospace`;
-    ctx.fillStyle   = isRoot ? 'rgba(255,255,255,0.95)'
-                   : isTgt  ? SEMITONE_COLORS[tIdx]
-                   :           'rgba(180,170,215,0.48)';
+      ? `700 ${(R * 0.074).toFixed(1)}px 'IBM Plex Mono',monospace`
+      :        `${(R * 0.060).toFixed(1)}px 'IBM Plex Mono',monospace`;
+    ctx.fillStyle = isLit  ? '#ffffff'
+                 : isRoot  ? 'rgba(255,255,255,0.95)'
+                 : isTgt   ? segColor
+                 :            segColor + 'bb'; // ~73 % opacity — bright but not glaring
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(CLOCK_LABELS[i], lx, ly);
+    ctx.fillText(CLOCK_LABELS[nameI], lx, ly);
   }
 
   // 5. Inner vignette (blends label ring into dark face) ──────────────────────
@@ -281,10 +294,8 @@ function _render(state, targetSemitones) {
   const hTipX    = cx + handLen * Math.cos(handAngle);
   const hTipY    = cy + handLen * Math.sin(handAngle);
 
-  // Color the tip gem by the semitone position the hand is pointing at
-  let hSemi = Math.round(_displayAngle / 30) % 12;
-  if (hSemi < 0) hSemi += 12;
-  const hColor = _hasPitch ? SEMITONE_COLORS[hSemi] : 'rgba(60,50,110,0.50)';
+  // Gem is red when pitch active, dark when silent
+  const hColor = _hasPitch ? '#ff4d4d' : 'rgba(60,50,110,0.50)';
 
   ctx.save();
   ctx.shadowColor = hColor;
@@ -337,11 +348,10 @@ function _render(state, targetSemitones) {
   if (targetSemitones !== 0) {
     // Use raw targetSemitones (not tIdx) so octave (12) places at 12:00; negatives go counter-clockwise
     const tAngle = (targetSemitones / 12) * Math.PI * 2 - Math.PI / 2;
-    const tDotR  = R * 0.872;
+    const tDotR  = R * 0.938;
     const tdx    = cx + tDotR * Math.cos(tAngle);
     const tdy    = cy + tDotR * Math.sin(tAngle);
-    const tColor = SEMITONE_COLORS[tIdx];
-    const ds     = R * 0.040; // diamond half-size
+    const ds = R * 0.040; // diamond half-size
 
     ctx.save();
     ctx.shadowColor = tColor;
