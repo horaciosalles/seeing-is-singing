@@ -1,0 +1,9 @@
+{
+  "name": "seeing-is-singing",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "serve": "npx --yes http-server -c-1 -p 8080 ."
+  }
+}

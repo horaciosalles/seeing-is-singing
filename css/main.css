@@ -1,0 +1,183 @@
+/* ── main.css ─────────────────────────────────────────────────────────────────
+   SightSing — full-screen pitch clock.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Inter:wght@400;500;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+:root {
+  --bg:     #12102a;
+  --bord:   rgba(167,139,250,0.18);
+  --bord2:  rgba(167,139,250,0.40);
+  --text:   #e8e4ff;
+  --muted:  rgba(167,139,250,0.55);
+  --accent: #7c65f0;
+  --danger: #e05555;
+  --root:   #ff6b6b;
+  --r:      10px;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+}
+
+/* ── Badges ── */
+.version-badge {
+  position: fixed; bottom: 8px; right: 10px; z-index: 50;
+  font: .55rem 'IBM Plex Mono', monospace; letter-spacing: .06em;
+  color: var(--muted); opacity: .45;
+  pointer-events: none; user-select: none;
+}
+
+.debug {
+  position: fixed; top: 8px; left: 8px; z-index: 60;
+  font: .62rem/1.5 'IBM Plex Mono', monospace;
+  color: #a5f3fc;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid var(--bord);
+  border-radius: 6px;
+  padding: 6px 9px;
+  pointer-events: none;
+}
+
+/* ── Start overlay ── */
+.ov {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(14,12,36,0.97);
+  backdrop-filter: blur(20px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.ov.gone { display: none; }
+
+.ov-card {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  max-width: 380px; width: 100%; text-align: center;
+}
+.ov-logo { font-size: 2.8rem; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+.ov-logo em { font-style: italic; font-weight: 400; color: var(--accent); }
+.ov-tagline { font-size: .88rem; color: var(--muted); line-height: 1.65; }
+
+.ov-start {
+  width: 100%; padding: 16px 0;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: var(--r);
+  font: 700 .95rem 'Inter', sans-serif; letter-spacing: .03em;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(124,101,240,0.38);
+  transition: opacity .15s, transform .07s;
+}
+.ov-start:hover  { opacity: .88; }
+.ov-start:active { transform: scale(.97); }
+
+.ov-how-btn {
+  background: none; border: none; padding: 2px 0;
+  font: .6rem 'IBM Plex Mono', monospace; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer;
+}
+.ov-how-btn:hover { color: var(--text); }
+
+.ov-steps {
+  list-style: none; counter-reset: step;
+  width: 100%; text-align: left;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--bord); border-radius: var(--r);
+  padding: 14px 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ov-steps li {
+  counter-increment: step; position: relative; padding-left: 24px;
+  font: .66rem/1.6 'IBM Plex Mono', monospace;
+}
+.ov-steps li::before {
+  content: counter(step); position: absolute; left: 0;
+  color: var(--accent); font-weight: 700;
+}
+
+.ov-err {
+  width: 100%; text-align: left;
+  font: .66rem/1.5 'IBM Plex Mono', monospace; color: var(--danger);
+}
+
+/* ── Main ── */
+.main {
+  height: 100dvh; max-width: 640px; margin: 0 auto;
+  display: flex; flex-direction: column;
+  padding: 8px 8px 12px;
+}
+
+.target-name {
+  flex: none; text-align: center;
+  font: 500 .72rem 'IBM Plex Mono', monospace; letter-spacing: .06em;
+  color: var(--muted); padding: 4px 0 2px;
+}
+
+.clock-wrap { flex: 1; min-height: 0; position: relative; }
+
+#clockCanvas {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  cursor: pointer;
+  touch-action: none;
+}
+body[data-state="SINGING"] #clockCanvas { cursor: default; }
+
+/* ── Root picker over the 12 o'clock segment ── */
+.root-overlay {
+  position: absolute; z-index: 5;
+  display: flex; flex-direction: column; align-items: center;
+  gap: calc(var(--u, 12px) * 0.45);
+  padding-top: calc(var(--u, 12px) * 0.7);
+  transition: opacity .2s;
+}
+body[data-state="SINGING"] .root-overlay { opacity: .38; pointer-events: none; }
+
+.root-row { display: flex; gap: calc(var(--u, 12px) * 0.35); justify-content: center; }
+
+.root-select, .root-btn {
+  font: 700 var(--u, 12px) 'IBM Plex Mono', monospace;
+  color: var(--root);
+  background: rgba(20,18,52,0.88);
+  border: 1px solid rgba(255,107,107,0.45);
+  border-radius: 6px;
+  padding: .25em .45em;
+  cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  text-align: center; text-align-last: center;
+}
+.root-select { min-width: 3.2em; }
+.root-btn { min-width: 2.6em; font-size: calc(var(--u, 12px) * 0.85); }
+.root-select:focus-visible, .root-btn:focus-visible { outline: 2px solid var(--root); outline-offset: 1px; }
+.root-btn.on { background: var(--root); color: #14122e; }
+
+/* ── Hub buttons ── */
+.hub-btn {
+  position: absolute; z-index: 6;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.28);
+  font: 700 .9rem 'Inter', sans-serif; letter-spacing: .04em;
+  color: #fff; cursor: pointer;
+  transition: transform .07s, opacity .15s;
+}
+.hub-btn:active { transform: scale(.95); }
+.hub-sing {
+  background: radial-gradient(circle at 50% 35%, #8875d8, #3a3180);
+  box-shadow: 0 0 24px rgba(124,101,240,0.45);
+}
+/* Stop is a small dark button so the clock hub glow stays visible */
+.hub-stop {
+  background: rgba(20,18,52,0.6);
+  font-size: .8rem; color: rgba(255,255,255,0.7);
+}
+body[data-state="READY"]   .hub-stop { display: none; }
+body[data-state="SINGING"] .hub-sing { display: none; }

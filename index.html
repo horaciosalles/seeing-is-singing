@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SightSing</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23302d5c' stroke='%237c65f0' stroke-width='2'/%3E%3Cpath d='M16 16 L23 8' stroke='%23ff4d4d' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body data-state="READY">
+
+<div class="version-badge" id="versionBadge"></div>
+<pre class="debug" id="debug" hidden></pre>
+
+<!-- Mic permission overlay -->
+<div class="ov" id="ov">
+  <div class="ov-card">
+    <h1 class="ov-logo">Sight<em>Sing</em></h1>
+    <p class="ov-tagline">Interval ear training with a real-time pitch clock.</p>
+    <button class="ov-start" id="grantBtn">Start — allow microphone</button>
+    <button class="ov-how-btn" id="howBtn">How does it work ↓</button>
+    <ol class="ov-steps" id="ovSteps" hidden>
+      <li>Pick the root note and octave at 12 o'clock; ▶ plays it</li>
+      <li>Tap a segment to choose the target interval (8va for the octave) — it plays the note</li>
+      <li>The dial at 3 o'clock toggles ascending / descending</li>
+      <li>Press <strong>Sing</strong> (or Space). The hand follows your voice; hold the target for a moment and the clock glows</li>
+      <li>Headphones help: the reference note won't leak into the microphone</li>
+    </ol>
+    <p class="ov-err" id="ovErr" hidden></p>
+  </div>
+</div>
+
+<main class="main">
+  <div class="target-name" id="targetName"></div>
+
+  <div class="clock-wrap" id="clockWrap">
+    <canvas id="clockCanvas"></canvas>
+
+    <!-- Root picker, positioned over the 12 o'clock segment by main.js -->
+    <div class="root-overlay" id="rootOverlay">
+      <div class="root-row">
+        <select class="root-select" id="noteSelect" aria-label="Root note"></select>
+        <select class="root-select" id="octSelect" aria-label="Root octave"></select>
+      </div>
+      <div class="root-row">
+        <button class="root-btn" id="playRootBtn" aria-label="Play root">▶</button>
+        <button class="root-btn" id="octTargetBtn" aria-label="Target: octave">8va</button>
+      </div>
+    </div>
+
+    <button class="hub-btn hub-sing" id="singBtn">Sing</button>
+    <button class="hub-btn hub-stop" id="stopBtn" aria-label="Stop">■</button>
+  </div>
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
